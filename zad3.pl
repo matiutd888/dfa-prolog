@@ -23,9 +23,9 @@ states([fp(S, _, _) | L], R, A) :-
     states(L , R, A).
 
 % notTransition(+transitions, +alphabet, +states)
-% notTransition(T, A, S) :- member(A1, A), 
-%    member(S1, S),
-%    \+member(fp(S1, A1, _), T).
+notTransition(T, A, S) :- member(A1, A), 
+   member(S1, S),
+   \+ member(fp(S1, A1, _), T).
 
 % subList(+l1, +l2)
 % Sprawdza, czy każdy element na jednej liście pojawia się na drugiej.
@@ -55,12 +55,13 @@ correct(dfa(T, B, F), myAutomata(A, S, T, B, F)) :-
     subList(F, S),
     member(B, S),
     checkTransitionDuplicates(T),
-    length(A, LA), % tę długość można liczyć przy liczeniu alphabet.
-    length(S, LS), % jak wyżej.
-    length(T, LT),
-    LT is LA * LS,
-    checkDestinations(T, S).
-    % \+ notTransition(T, A, S).
+    %  Funkcja length nie była pokazywana na wykładzie.
+    %  length(A, LA), % tę długość można liczyć przy liczeniu alphabet.
+    %  length(S, LS), % jak wyżej.
+    %  length(T, LT),
+    % LT is LA * LS,
+    checkDestinations(T, S),
+    \+ notTransition(T, A, S).
 
 % findTransition(+ST, +A, +T, ?X)
 findTransition(ST, A, [fp(ST, A, Z) | _], Z) :- !.
