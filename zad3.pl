@@ -62,12 +62,25 @@ correct(dfa(T, B, F), myAutomata(A, S, T, B, F)) :-
     checkDestinations(T, S).
     % \+ notTransition(T, A, S).
 
+% findTransition(+ST, +A, +T, ?X)
+findTransition(ST, A, [fp(ST, A, Z) | _], Z) :- !.
+findTransition(ST, A, [_ | L], X) :- findTransition(ST, A, L, X).
     
 % accept(myAutomata(A, S, T, I, F), -X). 
-accept(myAutomata(A, S, T, I, F), X) :- traverse(B, myAutomata(A, S, T, I, F), X, []).
+accept(AUT, X) :- correct(AUT, REP), accept2(REP, X).
+accept2(myAutomata(A, S, T, I, F), X) :- traverse(myAutomata(A, S, T, I, F), I, X, []).
+traverse(myAutomata(_, _, T, _, F), ST, [], C) :- member(ST, F),
+    subList(C, T).
+traverse(myAutomata(A, S, T, I, F), ST, [X | L], C) :-
+   traverse(myAutomata(A, S, T, I, F), ST2, L, [fp(ST, X, ST2) | C]).
+   
 
-
-
+% todo bfs traverse
+% traversebfs(aut, [(state, word) | Q])
+% traverseBFS(aut
+% albo bfs z akumulatorem
+% traverse(aut, begginingState, [], X)
+% traverse(aut, begginingState, [], 
 
 example(a11, dfa([fp(1,a,1),fp(1,b,2),fp(2,a,2),fp(2,b,1)], 1, [2,1])).
 example(a12, dfa([fp(x,a,y),fp(x,b,x),fp(y,a,x),fp(y,b,x)], x, [x,y])).
@@ -89,3 +102,4 @@ example(b5, dfa([], [], [])).
 
 
 testCorrect(X, Z) :- example(X, Y), correct(Y, Z).
+testAccept(X, Z) :- example(X, Y), accept(Y, Z).
