@@ -62,6 +62,12 @@ correct(dfa(T, B, F), myAutomata(A, S, T, B, F)) :-
     checkDestinations(T, S).
     % \+ notTransition(T, A, S).
 
+    
+% accept(myAutomata(A, S, T, I, F), -X). 
+accept(myAutomata(A, S, T, I, F), X) :- traverse(B, myAutomata(A, S, T, I, F), X, []).
+
+
+
 
 example(a11, dfa([fp(1,a,1),fp(1,b,2),fp(2,a,2),fp(2,b,1)], 1, [2,1])).
 example(a12, dfa([fp(x,a,y),fp(x,b,x),fp(y,a,x),fp(y,b,x)], x, [x,y])).
