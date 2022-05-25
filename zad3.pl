@@ -2,6 +2,32 @@
 % dzięki wykorzystaniu wyszukiwania binarnego i uporządkowanych list.
 % obecnie mają złożoność O(n^2) w większości.
 
+dlugosc(A, X) :- dlugoscHelp(A, 0, X).
+dlugoscHelp([], X, X).
+dlugoscHelp([_ | L], Y, X) :- 
+    Y2 is Y + 1,
+    dlugoscHelp(L, Y2, X). 
+
+% Implementacja kolejki za pomocą listy różnicowej.
+initQ(L-L).
+
+closeQ(_-X) :- X = [].
+
+emptyQ(L-L) :- var(L).
+
+pushQ(X, L-L, K) :-
+  var(L),
+  !,
+  K = [X | R]-R.
+pushQ(X, L-R, L-K) :-
+  nonvar(L),
+  var(R),
+  R = [X | K].
+
+popQ([A | R]-X, R-X, A) :- var(X).
+
+
+
 % alphabet(+przejscia, ?alphabet)
 alphabet(F, A) :- alphabet(F, [], A).
 alphabet([], A, A).
@@ -34,6 +60,11 @@ notTransition(T, A, S) :- member(A1, A),
 subList([], _).
 subList([X | L], L2) :- member(X, L2), subList(L, L2).
 
+odwroc(L, R) :- odwroc(L, [], R).
+odwroc([], R, R).
+odwroc([X | L], Z, R) :- odwroc(L, [X | Z], R).
+
+
 % checkDestinations(+tranzycje, +stany) - sprawdza, czy 
 % cele tranzycji są w stanach.
 checkDestinations([], _).
@@ -56,12 +87,13 @@ correct(dfa(T, B, F), myAutomata(A, S, T, B, F)) :-
     member(B, S),
     checkTransitionDuplicates(T),
     %  Funkcja length nie była pokazywana na wykładzie.
-    %  length(A, LA), % tę długość można liczyć przy liczeniu alphabet.
-    %  length(S, LS), % jak wyżej.
-    %  length(T, LT),
-    % LT is LA * LS,
-    checkDestinations(T, S),
-    \+ notTransition(T, A, S).
+    dlugosc(A, LA), % tę długość można liczyć przy liczeniu alphabet.
+    dlugosc(S, LS), % jak wyżej.
+    dlugosc(T, LT),
+    LT is LA * LS,
+    checkDestinations(T, S).
+    % \+ notTransition(T, A, S).
+
 
 % findTransition(+ST, +A, +T, ?X)
 findTransition(ST, A, [fp(ST, A, Z) | _], Z) :- !.
@@ -69,13 +101,44 @@ findTransition(ST, A, [_ | L], X) :- findTransition(ST, A, L, X).
     
 % accept(myAutomata(A, S, T, I, F), -X). 
 accept(AUT, X) :- correct(AUT, REP), accept2(REP, X).
-accept2(myAutomata(A, S, T, I, F), X) :- traverse(myAutomata(A, S, T, I, F), I, X, []).
-traverse(myAutomata(_, _, T, _, F), ST, [], C) :- member(ST, F),
-    subList(C, T).
-traverse(myAutomata(A, S, T, I, F), ST, [X | L], C) :-
-   traverse(myAutomata(A, S, T, I, F), ST2, L, [fp(ST, X, ST2) | C]).
-   
+% accept2(myAutomata(A, S, T, I, F), X) :- traverse(myAutomata(A, S, T, I, F), I, X, [], X).
+accept2(myAutomata(A, S, T, I, F), X) :- 
+    initQ(Q),
+    pushQ(element(I, X, letter(), letter()), Q, QN),
+    traverseBFS(myAutomata(A, S, T, I, F), QN),
+    closeQ(QN).
+    
+% traverse(myAutomata(_, _, T, _, F), ST, [], C) :- member(ST, F),
+%     subList(C, T).
+% traverse(myAutomata(A, S, T, I, F), ST, [X | L], C) :-
+%    traverse(myAutomata(A, S, T, I, F), ST2, L, [fp(ST, X, ST2) | C]).
 
+addAllTransitions(Q1, Q1, _, [], _, _) :- !.
+addAllTransitions(Q1, Q3, ST, [fp(ST, Z, STN) | T], X, L) :-
+    pushQ(element(STN, L, letter(X), letter(Z)), Q1, Q2),
+    addAllTransitions(Q2, Q3, ST, T, X, L).
+addAllTransitions(Q1, Q3, ST, [_ | T], X, L) :-
+    addAllTransitions(Q1, Q3, ST, T, X, L).
+
+traverseBFS(myAutomata(_, _, _, _, F), Q) :-
+    popQ(Q, _, element(ST, [], LT, LT)),
+    member(ST, F).
+traverseBFS(myAutomata(A, S, T, I, F), Q) :-
+    popQ(Q, Q2, element(ST, [X | L], LT, LT)),
+    write("before\n"),
+    write(Q), write("\n"),
+    addAllTransitions(Q2, Q3, ST, T, X, L),
+    write("after\n"),write(Q3), write("\n"),
+    traverseBFS(myAutomata(A, S, T, I, F), Q3).
+traverse(myAutomata(_, _, _, _, F), ST, X, REVX, []) :- 
+    member(ST, F),
+    odwroc(X, REVX).
+traverse(myAutomata(A, S, T, I, F), ST, X, AK, [_ | LEN]) :-
+   traverse(myAutomata(A, S, T, I, F), ST2, X, [Z | AK], LEN),
+   member(fp(ST, Z, ST2), T).
+
+% I need to implement bfs traverse as current function is 100% worse!
+% It has exponential running time.
 % todo bfs traverse
 % traversebfs(aut, [(state, word) | Q])
 % traverseBFS(aut
@@ -103,4 +166,13 @@ example(b5, dfa([], [], [])).
 
 
 testCorrect(X, Z) :- example(X, Y), correct(Y, Z).
+testBadCorrect() :- 
+    member(X, [b1, b2, b3, b4, b5]),
+    testCorrect(X, _).
+testGoodCorrect() :-
+    member(X, [a11, a12, a2, a3, a4, a5, a6, a7]),
+    \+ testCorrect(X, _).
+testAllCorrect() :- \+ testBadCorrect(),
+    \+ testGoodCorrect().
+
 testAccept(X, Z) :- example(X, Y), accept(Y, Z).
