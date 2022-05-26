@@ -84,7 +84,7 @@ checkTransitionDuplicates([fp(S, A, X) | L], AK) :-
     checkTransitionDuplicates(L, [fp(S, A, X) | AK]).
 
 % TODO czy musimy sprawdzać, że nie ma duplikatów w F.
-correct(dfa(T, B, F), myAutomata(A, S, T, B, F)) :- 
+correct(dfa(T, B, F), aut(A, S, T, B, F)) :- 
     alphabet(T, A),
     states(T, S),
     subList(F, S),
@@ -103,18 +103,18 @@ correct(dfa(T, B, F), myAutomata(A, S, T, B, F)) :-
 findTransition(ST, A, [fp(ST, A, Z) | _], Z) :- !.
 findTransition(ST, A, [_ | L], X) :- findTransition(ST, A, L, X).
     
-% accept(myAutomata(A, S, T, I, F), -X). 
-accept(AUT, X) :- correct(AUT, REP), accept2(REP, X).
-% accept2(myAutomata(A, S, T, I, F), X) :- traverse(myAutomata(A, S, T, I, F), I, X, [], X).
-accept2(myAutomata(A, S, T, I, F), X) :- 
+% accept(aut(A, S, T, I, F), -X). 
+accept(AUT, X) :- correct(AUT, REP), acceptAut(REP, X).
+% acceptAut(aut(A, S, T, I, F), X) :- traverse(aut(A, S, T, I, F), I, X, [], X).
+acceptAut(aut(A, S, T, I, F), X) :- 
     % usuniecie tych linijek sprawia, że przestaje działać :) TODO
     dlugosc(X, _),
     %  initQ(Q),
     %  pushQ(element(I, []), Q, QN),
-    % traverseBFS(myAutomata(A, S, T, I, F), [element(I, [], L)], X, X).
+    % traverseBFS(aut(A, S, T, I, F), [element(I, [], L)], X, X).
 
-    traverseDFS(myAutomata(A, S, T, I, F), [element(I, X)]).
-    % traverseBFS(myAutomata(A, S, T, I, F), [element(I, X)]).
+    traverseDFS(aut(A, S, T, I, F), [element(I, X)]).
+    % traverseBFS(aut(A, S, T, I, F), [element(I, X)]).
     % closeQ(QN).
     
 addAllTransitions(Q1, Q1, _, [], _) :- !.
@@ -124,27 +124,51 @@ addAllTransitions(Q1, Q3, ST, [fp(ST, Z, STN) | T], L) :-
 addAllTransitions(Q1, Q3, ST, [_ | T], L) :-
     addAllTransitions(Q1, Q3, ST, T, L).
     
-traverseBFS(myAutomata(_, _, _, _, F), [element(ST, []) | _]) :-
+traverseBFS(aut(_, _, _, _, F), [element(ST, []) | _]) :-
     member(ST, F),
     !.
-traverseBFS(myAutomata(A, S, T, I, F), [element(ST, [Z | REST]) | Q2]) :-
+traverseBFS(aut(A, S, T, I, F), [element(ST, [Z | REST]) | Q2]) :-
     member(fp(ST, Z, STN), T),
     append(Q2, [element(STN, REST)], Q3),
-    traverseBFS(myAutomata(A, S, T, I, F), Q3).
+    traverseBFS(aut(A, S, T, I, F), Q3).
 
-traverseDFS(myAutomata(_, _, _, _, F), [element(ST, []) | _]) :-
+traverseDFS(aut(_, _, _, _, F), [element(ST, []) | _]) :-
     member(ST, F),
     !.
-traverseDFS(myAutomata(A, S, T, I, F), [element(ST, [Z | REST]) | Q2]) :-
+traverseDFS(aut(A, S, T, I, F), [element(ST, [Z | REST]) | Q2]) :-
     member(fp(ST, Z, STN), T),
-    traverseDFS(myAutomata(A, S, T, I, F), [element(STN, REST) | Q2]).
+    traverseDFS(aut(A, S, T, I, F), [element(STN, REST) | Q2]).
 
-traverse(myAutomata(_, _, _, _, F), ST, X, REVX, []) :- 
+% traverse(aut(_, _, _, _, F), ST, X, REVX, []) :- 
+%     member(ST, F),
+%     odwroc(X, REVX).
+% traverse(aut(A, S, T, I, F), ST, X, AK, [_ | LEN]) :-
+%    traverse(aut(A, S, T, I, F), ST2, X, [Z | AK], LEN),
+%    member(fp(ST, Z, ST2), T).
+
+empty(A1) :- correct(A1, aut(A, S, T, I, F)),
+   \+ emptyDFS(aut(A, S, T, I, F), I).
+
+% wyjmij(+E, +LISTA, +lista po wyjęciu)
+wyjmij(E, [E | L], L).
+wyjmij(E, [X | L], [X | L1]) :- wyjmij(E, L, L1).
+
+wyjmijTranzycje(_, [], []).
+wyjmijTranzycje(ST, [fp(_, _, ST) | L], X) :- 
+    !,
+    wyjmijTranzycje(ST, L, X).
+wyjmijTranzycje(ST, [E | L], [E | X]) :- 
+    wyjmijTranzycje(ST, L, X).
+
+emptyDFS(aut(_, _, _, _, F), ST) :-
     member(ST, F),
-    odwroc(X, REVX).
-traverse(myAutomata(A, S, T, I, F), ST, X, AK, [_ | LEN]) :-
-   traverse(myAutomata(A, S, T, I, F), ST2, X, [Z | AK], LEN),
-   member(fp(ST, Z, ST2), T).
+    !.
+emptyDFS(aut(A, S, T, I, F), ST) :- 
+    % write(ST),write("\n"),
+    wyjmijTranzycje(ST, T, NT), % usuwam wszystkie krawędzie wchodzące do danego wierzchołka, jak tu jesteśmy to już nie musimy 
+    member(fp(ST, _, NST), NT),
+    emptyDFS(aut(A, S, NT, I, F), NST).
+
 
 % I need to implement bfs traverse as current function is 100% worse!
 % It has exponential running time.
