@@ -110,11 +110,11 @@ accept2(myAutomata(A, S, T, I, F), X) :-
     odwroc(X, X2),
     dlugosc(X2, LENGTH),
     listOfLength(LENGTH, L),
-    
     %  initQ(Q),
     %  pushQ(element(I, []), Q, QN),
-    
-    traverseBFS(myAutomata(A, S, T, I, F), [element(I, [], L, X)], X).
+    % traverseBFS(myAutomata(A, S, T, I, F), [element(I, [], L)], X, X).
+
+    traverseBFS(myAutomata(A, S, T, I, F), [element(I, X)]).
     % closeQ(QN).
     
 % traverse(myAutomata(_, _, T, _, F), ST, [], C) :- member(ST, F),
@@ -138,14 +138,14 @@ addAllTransitions(Q1, Q3, ST, [_ | T], L) :-
 %     % pushQ(element(STN, [Z | XT]), Q2, Q3), 
 %     traverseBFS(myAutomata(A, S, T, I, F), Q3, X, REST).
 
-traverseBFS(myAutomata(_, _, _, _, F), [element(ST, _, [], []) | _], _) :-
+traverseBFS(myAutomata(_, _, _, _, F), [element(ST, []) | _]) :-
     member(ST, F),
     !.
-traverseBFS(myAutomata(A, S, T, I, F), [element(ST, XT, [_ | L2], [Z | REST]) | Q2], X) :-
+traverseBFS(myAutomata(A, S, T, I, F), [element(ST, [Z | REST]) | Q2]) :-
     member(fp(ST, Z, STN), T),
-    append(Q2, [element(STN, [Z | XT], L2, REST)], Q3),
+    append(Q2, [element(STN, REST)], Q3),
     % pushQ(element(STN, [Z | XT]), Q2, Q3), 
-    traverseBFS(myAutomata(A, S, T, I, F), Q3, X).
+    traverseBFS(myAutomata(A, S, T, I, F), Q3).
 
 
 traverse(myAutomata(_, _, _, _, F), ST, X, REVX, []) :- 
