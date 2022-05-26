@@ -107,9 +107,8 @@ findTransition(ST, A, [_ | L], X) :- findTransition(ST, A, L, X).
 accept(AUT, X) :- correct(AUT, REP), accept2(REP, X).
 % accept2(myAutomata(A, S, T, I, F), X) :- traverse(myAutomata(A, S, T, I, F), I, X, [], X).
 accept2(myAutomata(A, S, T, I, F), X) :- 
-    % usuniecie tych linijek sprawia, że przestaje działać :)
-    dlugosc(X, LENGTH),
-    listOfLength(LENGTH, L),
+    % usuniecie tych linijek sprawia, że przestaje działać :) TODO
+    dlugosc(X, _),
     %  initQ(Q),
     %  pushQ(element(I, []), Q, QN),
     % traverseBFS(myAutomata(A, S, T, I, F), [element(I, [], L)], X, X).
@@ -126,14 +125,16 @@ addAllTransitions(Q1, Q3, ST, [_ | T], L) :-
     addAllTransitions(Q1, Q3, ST, T, L).
     
 traverseBFS(myAutomata(_, _, _, _, F), [element(ST, []) | _]) :-
-    member(ST, F).
+    member(ST, F),
+    !.
 traverseBFS(myAutomata(A, S, T, I, F), [element(ST, [Z | REST]) | Q2]) :-
     member(fp(ST, Z, STN), T),
     append(Q2, [element(STN, REST)], Q3),
     traverseBFS(myAutomata(A, S, T, I, F), Q3).
 
 traverseDFS(myAutomata(_, _, _, _, F), [element(ST, []) | _]) :-
-    member(ST, F).
+    member(ST, F),
+    !.
 traverseDFS(myAutomata(A, S, T, I, F), [element(ST, [Z | REST]) | Q2]) :-
     member(fp(ST, Z, STN), T),
     traverseDFS(myAutomata(A, S, T, I, F), [element(STN, REST) | Q2]).
