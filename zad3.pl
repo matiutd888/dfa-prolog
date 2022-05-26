@@ -26,7 +26,11 @@ pushQ(X, L-R, L-K) :-
 
 popQ([A | R]-X, R-X, A) :- var(X).
 
-
+listOfLength(0, []).
+listOfLength(X, [_ | L]) :-
+    X > 0,
+    X2 is X - 1,
+    listOfLength(X2, L).
 
 % alphabet(+przejscia, ?alphabet)
 alphabet(F, A) :- alphabet(F, [], A).
@@ -103,33 +107,33 @@ findTransition(ST, A, [_ | L], X) :- findTransition(ST, A, L, X).
 accept(AUT, X) :- correct(AUT, REP), accept2(REP, X).
 % accept2(myAutomata(A, S, T, I, F), X) :- traverse(myAutomata(A, S, T, I, F), I, X, [], X).
 accept2(myAutomata(A, S, T, I, F), X) :- 
-    initQ(Q),
-    pushQ(element(I, X, letter(), letter()), Q, QN),
-    traverseBFS(myAutomata(A, S, T, I, F), QN),
-    closeQ(QN).
+    %  initQ(Q),
+    %  pushQ(element(I, []), Q, QN),
+    dlugosc(X, LENGTH),
+    listOfLength(LENGTH, L),
+    traverseBFS(myAutomata(A, S, T, I, F), [element(I, [], L)], X).
+    % closeQ(QN).
     
 % traverse(myAutomata(_, _, T, _, F), ST, [], C) :- member(ST, F),
 %     subList(C, T).
 % traverse(myAutomata(A, S, T, I, F), ST, [X | L], C) :-
 %    traverse(myAutomata(A, S, T, I, F), ST2, L, [fp(ST, X, ST2) | C]).
 
-addAllTransitions(Q1, Q1, _, [], _, _) :- !.
-addAllTransitions(Q1, Q3, ST, [fp(ST, Z, STN) | T], X, L) :-
-    pushQ(element(STN, L, letter(X), letter(Z)), Q1, Q2),
-    addAllTransitions(Q2, Q3, ST, T, X, L).
-addAllTransitions(Q1, Q3, ST, [_ | T], X, L) :-
-    addAllTransitions(Q1, Q3, ST, T, X, L).
-
-traverseBFS(myAutomata(_, _, _, _, F), Q) :-
-    popQ(Q, _, element(ST, [], LT, LT)),
-    member(ST, F).
-traverseBFS(myAutomata(A, S, T, I, F), Q) :-
-    popQ(Q, Q2, element(ST, [X | L], LT, LT)),
-    write("before\n"),
-    write(Q), write("\n"),
-    addAllTransitions(Q2, Q3, ST, T, X, L),
-    write("after\n"),write(Q3), write("\n"),
-    traverseBFS(myAutomata(A, S, T, I, F), Q3).
+addAllTransitions(Q1, Q1, _, [], _) :- !.
+addAllTransitions(Q1, Q3, ST, [fp(ST, Z, STN) | T], L) :- 
+    pushQ(element(STN, [Z | L]), Q1, Q2),
+    addAllTransitions(Q2, Q3, ST, T, L).
+addAllTransitions(Q1, Q3, ST, [_ | T], L) :-
+    addAllTransitions(Q1, Q3, ST, T, L).
+    
+traverseBFS(myAutomata(_, _, _, _, F), [element(ST, REVX, []) | _], X) :-
+    member(ST, F),
+    odwroc(X, REVX).
+traverseBFS(myAutomata(A, S, T, I, F), [element(ST, XT, [_ | L2]) | Q2], X) :-
+    member(fp(ST, Z, STN), T),
+    append(Q2, [element(STN, [Z | XT], L2)], Q3),
+    % pushQ(element(STN, [Z | XT]), Q2, Q3), 
+    traverseBFS(myAutomata(A, S, T, I, F), Q3, X).
 traverse(myAutomata(_, _, _, _, F), ST, X, REVX, []) :- 
     member(ST, F),
     odwroc(X, REVX).
