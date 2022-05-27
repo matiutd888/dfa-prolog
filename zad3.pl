@@ -118,12 +118,12 @@ setMap(K, V, wezel(L, entry(K2, V2), R), wezel(L, entry(K2, V2), R2)) :-
     setMap(K, V, R, R2).
 
 % createBSTMap(+KEYS, -newMap, +initial value).
-createBSTMap(S, N, V0) :-
-    createBSTMap(S, puste, N, V0).
-createBSTMap([], D, D, _).
-createBSTMap([ST | S], A, D, V0) :-
+createBSTMap(S, V0, M) :-
+    createBSTMap(S, V0, puste, M).
+createBSTMap([], _, D, D).
+createBSTMap([ST | S], V0, A, D) :-
     insertBST(A, entry(ST, V0), D0),
-    createBSTMap(S, D0, D, V0).
+    createBSTMap(S, V0, D0, D).
 
 % insertAllTransitions(+Tranzycje, +pustaMapa, -mapaPoDodaniu).
 insertAllTransitions([], M, M). 
@@ -147,7 +147,7 @@ correct(dfa(T, I, F), aut(A, S, D2, I, F)) :-
     alphabet(T, A),
     A \= [],
     states(T, S),
-    createBSTMap(S, D1, []),
+    createBSTMap(S, [], D1),
     checkIfAllStatesExist(F, D1),
     existsMap(I, D1),
     insertAllTransitions(T, D1, D2),
@@ -203,20 +203,40 @@ emptyDFS(aut(A, S, D, I, F), ST, V) :-
     emptyDFS(aut(A, S, D, I, F), NST, V2).
 
 % cartProduct(+X, +Y, ?L).
-cartProduct(X, Y, L) :- cartProductHelp(X, Y, L -[]).
-
+cartProduct(X, Y, L) :- cartProductHelp(X, Y, L - []).
 cartProductHelp([],_,L-L).
 cartProductHelp([E | L1], L2, AFTER2-BEFORE) :-
     cartHandleHelp(E, L2, AFTER1-BEFORE),
     cartProductHelp(L1, L2, AFTER2-AFTER1).
 
 cartHandleHelp(_,[], L - L).
-cartHandleHelp(X, [H | T], [product(X, H)| R] - L):- cartHelp(X, T, R - L).
+cartHandleHelp(X, [H | T], [prod(X, H)| R] - L) :- 
+    cartHandleHelp(X, T, R - L).
 
+% prodStateTrans(A, prod(S1, S2), T1, T2) :-
 
-% cap(aut(A, S1, T1, I1, F1), aut(A, S2, T2, I2, F2)) :-
-%    cartProduct(S1, S2, SPROD),
-        
+prodStateTrans([], _, _, _). 
+prodStateTrans([X | A], T1, T2, [prod(Y1, Y2) | TPROD]) :-
+    member(trans(X, Y1), T1),
+    member(trans(X, Y2), T2),
+    prodStateTrans(A, T1, T2, TPROD).
+
+addAllProductTrans(_, [], _, _, D, D).
+addAllProductTrans(A, [prod(S1, S2) | SPROD], D1, D2, D0, DPROD) :-
+   getMap(S1, D1, T1),
+   getMap(S2, D2, T2),
+   prodStateTrans(A, T1, T2, TPROD),
+   setMap(prod(S1, S2), TPROD, D0, DPROD1),
+   addAllProductTrans(A, SPROD, D1, D2, DPROD1, DPROD).
+
+cap(aut(A, S1, D1, I1, F1), aut(A, S2, D2, I2, F2), aut(A, SPROD, DPROD, prod(I1, I2), FPROD)) :-
+    cartProduct(S1, S2, SPROD),
+    write(SPROD), write("\n"),
+    cartProduct(F1, F2, FPROD),
+    write(FPROD), write("\n"),
+    createBSTMap(SPROD,  [], DPROD0),
+    addAllProductTrans(A, SPROD, D1, D2, DPROD0, DPROD).
+    
 % I need to implement bfs traverse as current function is 100% worse!
 % It has exponential running time.
 % todo bfs traverse
