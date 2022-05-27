@@ -54,16 +54,9 @@ states([fp(S, _, _) | L], R, A) :-
     states(L , R, A).
 
 % notTransition(+transitions, +alphabet, +states)
-notTransition(T, A, S) :- member(A1, A), 
-   member(S1, S),
-   \+ member(fp(S1, A1, _), T).
-
-% subList(+l1, +l2)
-% Sprawdza, czy każdy element na jednej liście pojawia się na drugiej.
-% tutaj można usuwać po znalezieniu
-% zakładamy, że l1 nie ma duplikatów.
-subList([], _).
-subList([X | L], L2) :- member(X, L2), subList(L, L2).
+% notTransition(T, A, S) :- member(A1, A), 
+%    member(S1, S),
+%    \+ member(fp(S1, A1, _), T).
 
 odwroc(L, R) :- odwroc(L, [], R).
 odwroc([], R, R).
@@ -74,31 +67,25 @@ odwroc([X | L], Z, R) :- odwroc(L, [X | Z], R).
 % cele tranzycji są w stanach.
 checkDestinations([], _).
 checkDestinations([fp(_, _, X) | L], D) :- 
-    stateExists(X, D),
+    existsMap(X, D),
     checkDestinations(L, D).
 
 % checkTransitionDuplicates(+list tranzycji)
-checkTransitionDuplicates(T) :- checkTransitionDuplicates(T, []).
-checkTransitionDuplicates([], _).
-checkTransitionDuplicates([fp(S, A, X) | L], AK) :-
-    \+ member(fp(S, A, _), AK),
-    checkTransitionDuplicates(L, [fp(S, A, X) | AK]).
+% checkTransitionDuplicates(T) :- checkTransitionDuplicates(T, []).
+% checkTransitionDuplicates([], _).
+% checkTransitionDuplicates([fp(S, A, X) | L], AK) :-
+%     \+ member(fp(S, A, _), AK),
+%     checkTransitionDuplicates(L, [fp(S, A, X) | AK]).
 
-
-% insertIntoTransListMap(fp(ST, X, Y), [entry(ST, TS) | M], [entry(ST, [trans(X, Y) | TS]) | M]) :-
+% Nie usuwać, może się kiedyś przydać.
+% insertIntoTransBSTMap(fp(ST, X, Y), wezel(L, entry(ST, TS), R), wezel(L, entry(ST, [trans(X, Y) | TS]), R)) :-
 %     \+ member(trans(X, Y), TS).
-% insertIntoTransListMap(fp(ST, X, Y), [entry(NST, T) | M],  [entry(NST, T) | M2]) :-
-%     NST \= ST,
-%     insertIntoTransListMap(fp(ST, X, Y), M, M2).
-
-insertIntoTransBSTMap(fp(ST, X, Y), wezel(L, entry(ST, TS), R), wezel(L, entry(ST, [trans(X, Y) | TS]), R)) :-
-    \+ member(trans(X, Y), TS).
-insertIntoTransBSTMap(fp(ST, X, Y), wezel(L, entry(NST, T), R), wezel(L2, entry(NST, T), R)) :-
-    ST @< NST,
-    insertIntoTransBSTMap(fp(ST, X, Y), L, L2).
-insertIntoTransBSTMap(fp(ST, X, Y), wezel(L, entry(NST, T), R), wezel(L, entry(NST, T), R2)) :-
-    ST @> NST,
-    insertIntoTransBSTMap(fp(ST, X, Y), R, R2).
+% insertIntoTransBSTMap(fp(ST, X, Y), wezel(L, entry(NST, T), R), wezel(L2, entry(NST, T), R)) :-
+%     ST @< NST,
+%     insertIntoTransBSTMap(fp(ST, X, Y), L, L2).
+% insertIntoTransBSTMap(fp(ST, X, Y), wezel(L, entry(NST, T), R), wezel(L, entry(NST, T), R2)) :-
+%     ST @> NST,
+%     insertIntoTransBSTMap(fp(ST, X, Y), R, R2).
 
 insertBST(puste, X, wezel(puste, X, puste)).
 insertBST(wezel(L, W, P), X, wezel(L1, W, P)) :-
@@ -109,57 +96,50 @@ insertBST(wezel(L, W, P), X, wezel(L, W, P1)) :-
   X @> W,
   insertBST(P, X, P1).
 
-% findTransInMap(+State, ?Letter, +BST, -trans)
-findTransInMap(ST, X, wezel(_, entry(ST, T), _), trans(X, Y)) :-      
-    member(trans(X, Y), T).
-findTransInMap(ST, X, wezel(L, entry(NST, _), _), T) :-
-    ST @< NST,
+% getMap(+KEY, MAP, -VALUE).
+getMap(K, wezel(_, entry(K, V), _), V).
+getMap(K, wezel(L, entry(K2, _), _), V) :-
+    K @< K2,
     % ODCIECIE HERE
     % !,
-    findTransInMap(ST, X, L, T).
-findTransInMap(ST, X, wezel(_, entry(NST, _), R), T) :-
-    ST @>  NST,
-    findTransInMap(ST, X, R, T).
+    getMap(K, L, V).
+getMap(K, wezel(_, entry(K2, _), R), V) :-
+    K @>  K2,
+    getMap(K, R, V).
 
-findAllStateTrans(ST, wezel(_, entry(ST, T), _), T).
-findAllStateTrans(ST, wezel(L, entry(NST, _), _), T) :-
-    ST @< NST,
+setMap(K, V, wezel(L, entry(K, _), R), wezel(L, entry(K, V), R)).
+setMap(K, V, wezel(L, entry(K2, V2), R), wezel(L2, entry(K2, V2), R)) :-
+    K @< K2,
     % ODCIECIE HERE
     % !,
-    findAllStateTrans(ST, L, T).
-findAllStateTrans(ST, wezel(_, entry(NST, _), R), T) :-
-    ST @>  NST,
-    findAllStateTrans(ST, R, T).
+    setMap(K, V, L, L2).
+setMap(K, V, wezel(L, entry(K2, V2), R), wezel(L, entry(K2, V2), R2)) :-
+    K @> K2,
+    setMap(K, V, R, R2).
 
-
-% createBSTMap(+States, -newMap).
-createBSTMap(S, N) :-
-    createBSTMap(S, puste, N).
-createBSTMap([], D, D).
-createBSTMap([ST | S], A, D) :-
-    insertBST(A, entry(ST, []), D0),
-    createBSTMap(S, D0, D).
+% createBSTMap(+KEYS, -newMap, +initial value).
+createBSTMap(S, N, V0) :-
+    createBSTMap(S, puste, N, V0).
+createBSTMap([], D, D, _).
+createBSTMap([ST | S], A, D, V0) :-
+    insertBST(A, entry(ST, V0), D0),
+    createBSTMap(S, D0, D, V0).
 
 % insertAllTransitions(+Tranzycje, +pustaMapa, -mapaPoDodaniu).
 insertAllTransitions([], M, M). 
-insertAllTransitions([X | T], M0, M2) :-
-    insertIntoTransBSTMap(X, M0, M1),
+insertAllTransitions([fp(ST, X, ST2) | T], M0, M2) :-
+    getMap(ST, M0, TS),
+    setMap(ST, [trans(X, ST2) | TS], M0, M1),
+    % insertIntoTransBSTMap(X, M0, M1),
     insertAllTransitions(T, M1, M2).
 
-% stateExists(+state, +transMap):
-stateExists(ST, wezel(_, entry(ST, _), _)).
-stateExists(ST, wezel(L, entry(NST, _), _)) :-
-    ST @< NST,
-    % ODCIECIE HERE,
-    % !,
-    stateExists(ST, L).
-stateExists(ST, wezel(_, entry(NST, _), R)) :-
-    ST @> NST,
-    stateExists(ST, R).
+% existsMap(+state, +transMap):
+existsMap(ST, D) :-
+    getMap(ST, D, _).
 
 checkIfAllStatesExist([], _).
 checkIfAllStatesExist([ST | S], D) :-
-    stateExists(ST, D),
+    existsMap(ST, D),
     checkIfAllStatesExist(S, D).
 
 % TODO czy musimy sprawdzać, że nie ma duplikatów w F.
@@ -167,11 +147,10 @@ correct(dfa(T, I, F), aut(A, S, D2, I, F)) :-
     alphabet(T, A),
     A \= [],
     states(T, S),
-    createBSTMap(S, D1),
+    createBSTMap(S, D1, []),
     checkIfAllStatesExist(F, D1),
-    stateExists(I, D1),
+    existsMap(I, D1),
     insertAllTransitions(T, D1, D2),
-    % checkTransitionDuplicates(T),
     % Funkcja length nie była pokazywana na wykładzie.
     dlugosc(A, LA), % tę długość można liczyć przy liczeniu alphabet.
     dlugosc(S, LS), % jak wyżej.
@@ -180,14 +159,8 @@ correct(dfa(T, I, F), aut(A, S, D2, I, F)) :-
     checkDestinations(T, D2).
     % \+ notTransition(T, A, S).
 
-
-% findTransition(+ST, +A, +T, ?X)
-% findTransition(ST, A, [fp(ST, A, Z) | _], Z) :- !.
-% findTransition(ST, A, [_ | L], X) :- findTransition(ST, A, L, X).
-    
 % accept(aut(A, S, T, I, F), -X). 
 accept(AUT, X) :- correct(AUT, REP), acceptAut(REP, X).
-% acceptAut(aut(A, S, T, I, F), X) :- traverse(aut(A, S, T, I, F), I, X, [], X).
 acceptAut(aut(A, S, D, I, F), X) :- 
     % usuniecie tych linijek sprawia, że przestaje działać :) TODO
     dlugosc(X, _),
@@ -198,67 +171,33 @@ acceptAut(aut(A, S, D, I, F), X) :-
     traverseDFS(aut(A, S, D, I, F), [element(I, X)]).
     % traverseBFS(aut(A, S, T, I, F), [element(I, X)]).
     % closeQ(QN).
-    
-% addAllTransitions(Q1, Q1, _, [], _) :- !.
-% addAllTransitions(Q1, Q3, ST, [fp(ST, Z, STN) | T], L) :- 
-%     pushQ(element(STN, [Z | L]), Q1, Q2),
-%     addAllTransitions(Q2, Q3, ST, T, L).
-% addAllTransitions(Q1, Q3, ST, [_ | T], L) :-
-%     addAllTransitions(Q1, Q3, ST, T, L).
-    
-traverseBFS(aut(_, _, _, _, F), [element(ST, []) | _]) :-
-    member(ST, F),
-    !.
-traverseBFS(aut(A, S, T, I, F), [element(ST, [Z | REST]) | Q2]) :-
-    member(fp(ST, Z, STN), T),
-    append(Q2, [element(STN, REST)], Q3),
-    traverseBFS(aut(A, S, T, I, F), Q3).
+
+% traverseBFS(aut(_, _, _, _, F), [element(ST, []) | _]) :-
+%     member(ST, F),
+%     !.
+% traverseBFS(aut(A, S, T, I, F), [element(ST, [Z | REST]) | Q2]) :-
+%     member(fp(ST, Z, STN), T),
+%     append(Q2, [element(STN, REST)], Q3),
+%     traverseBFS(aut(A, S, T, I, F), Q3).
 
 traverseDFS(aut(_, _, _, _, F), [element(ST, []) | _]) :-
     member(ST, F),
     !.
 traverseDFS(aut(A, S, D, I, F), [element(ST, [Z | REST]) | Q2]) :-
     % member(fp(ST, Z, STN), T),
-    findTransInMap(ST, Z, D, trans(Z, STN)),
+    getMap(ST, D, T),
+    member(trans(Z, STN), T),
     traverseDFS(aut(A, S, D, I, F), [element(STN, REST) | Q2]).
-
-% traverse(aut(_, _, _, _, F), ST, X, REVX, []) :- 
-%     member(ST, F),
-%     odwroc(X, REVX).
-% traverse(aut(A, S, T, I, F), ST, X, AK, [_ | LEN]) :-
-%    traverse(aut(A, S, T, I, F), ST2, X, [Z | AK], LEN),
-%    member(fp(ST, Z, ST2), T).
 
 empty(A1) :- correct(A1, aut(A, S, D, I, F)),
    \+ emptyDFS(aut(A, S, D, I, F), I, []).
-
-% wyjmij(+E, +LISTA, +lista po wyjęciu)
-% wyjmij(E, [E | L], L).
-% wyjmij(E, [X | L], [X | L1]) :- wyjmij(E, L, L1).
-% 
-% wyjmijTranzycje(_, [], []).
-% wyjmijTranzycje(ST, [fp(_, _, ST) | L], X) :- 
-%     !,
-%     wyjmijTranzycje(ST, L, X).
-% wyjmijTranzycje(ST, [fp(ST1, A, ST2) | L], [fp(ST1, A, ST2) | X]) :- 
-%     ST2 \= ST,
-%     wyjmijTranzycje(ST, L, X).
-% 
-% emptyDFS(aut(A, S, T, I, F), ST) :- 
-%     % write(ST),write("\n"),
-%     wyjmijTranzycje(ST, T, NT), % usuwam wszystkie krawędzie 
-%                                 % wchodzące do danego wierzchołka,
-%                                 % jak tu jesteśmy to już nie musimy 
-%     member(fp(ST, _, NST), NT),
-%     emptyDFS(aut(A, S, NT, I, F), NST).
-
 
 emptyDFS(aut(_, _, _, _, F), ST, _) :-
     member(ST, F).
 
 emptyDFS(aut(A, S, D, I, F), ST, V) :- 
     V2 = [ST | V],
-    findAllStateTrans(ST, D, T),
+    getMap(ST, D, T),
     member(trans(_, NST), T),
     \+ member(NST, V2),
     emptyDFS(aut(A, S, D, I, F), NST, V2).
