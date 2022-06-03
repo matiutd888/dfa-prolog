@@ -164,11 +164,12 @@ bstToList(wezel(L, W, R), A, K) :-
 
 % insertAllTransitions(+Tranzycje, +pustaMapa, -mapaPoDodaniu).
 insertAllTransitions([], Map, Map). 
-insertAllTransitions([fp(State, X, DestState) | TransLeft], Map0, Map2) :-
+insertAllTransitions([fp(State, X, DestState) | TransLeft], Map0, Map) :-
     getMap(Map0, State, StateTransitions),
+    % TODO to trzeba inaczej
+    \+ member(trans(X, _), StateTransitions),
     setMap(State, [trans(X, DestState) | StateTransitions], Map0, Map1),
-    % insertIntoTransBSTMap(X, M0, M1),
-    insertAllTransitions(TransLeft, Map1, Map2).
+    insertAllTransitions(TransLeft, Map1, Map).
 
 % existsMap(+state, +transMap):
 existsMap(State, Map) :-
@@ -183,8 +184,7 @@ debug(X) :-
     write(X), write("\n").
 
 % TODO czy musimy sprawdzać, że nie ma duplikatów w F.
-correct(dfa(TransList, Init, FinalList), 
-        aut(Alphabet, TransMap, Init, FinalSet, NStates)) :- 
+correct(dfa(TransList, Init, FinalList), aut(Alphabet, TransMap, Init, FinalSet, NStates, Infinity)) :- 
     alphabet(TransList, Alphabet),
     Alphabet \= [],
     createTransMap(TransList, TransMap0, NStates),
@@ -200,34 +200,44 @@ correct(dfa(TransList, Init, FinalList),
    
     insertAllTransitions(TransList, TransMap0, TransMap),
     
-    createBST(FinalList, FinalSet).
-    % Funkcja length nie była pokazywana na wykładzie.
-    % findAllDeadStates(S,    
-    % \+ notTransition(T, A, S).
- 
-infinite(aut(A, T, I, F, N)) :-
+    createBST(FinalList, FinalSet),
+   
+    infinityCheck(aut(Alphabet, TransMap, Init, FinalSet, NStates, _), Infinity),
+    !. % Representation is unequivocal, there is no need to search any further. 
+
+
+isInfinite(aut(_, T, I, F, N, _)) :-
     UpperBound is N + N,
-    bet(N, UpperBound, WordLength),
+    between(N, UpperBound, WordLength),
     length(Word, WordLength),
-    traverseDFS(aut(A, T, I, F, N), [element(I, Word)]),
+    traverseDFS(Word, T, F, I),
     !. % Important, we want only one success here.
 
+infinityCheck(A, inf) :- isInfinite(A), !.
+infinityCheck(A, notInf) :- \+ isInfinite(A). 
 
-accept(AUT, X) :- correct(AUT, REP), acceptAut(REP, X).
-acceptAut(aut(A, T, I, F, N), X) :- 
+accept(Aut, X) :- 
+    correct(Aut, Rep), 
+    acceptAut(Rep, X).
+acceptAut(aut(_, T, I, F, _, inf), X) :- 
     length(X, _),
-    traverseDFS(aut(A, T, I, F, N), [element(I, X)]).
+    traverseDFS(X, T, F, I).
+acceptAut(aut(_, T, I, F, N, notInf), X) :- 
+    bet(0, N, XLen),
+    length(X, XLen),
+    traverseDFS(X, T, F, I).
 
-traverseDFS(aut(_, _, _, F, _), [element(ST, []) | _]) :-
-    existsBST(F, ST),
+traverseDFS([], _, F, S) :-
+    existsBST(F, S),
     !.
-traverseDFS(aut(A, T, I, F, N), [element(ST, [Z | REST]) | Q2]) :-
-    getMap(T, ST, TransList),
-    member(trans(Z, STN), TransList),
-    traverseDFS(aut(A, T, I, F, N), [element(STN, REST) | Q2]).
+traverseDFS([C | Rest], T, F, CurrState):-
+    getMap(T, CurrState, TransList),
+    member(trans(C, NextState), TransList),
+    traverseDFS(Rest, T, F, NextState).
 
 % deadState(+State, +Aut).
-% deadState(S, A) :- \+ emptyDFS(A, S, []).
+deadState(S, A) :- \+ emptyDFS(A, S, []).
+
 % findAllDeadStates(_, [], []).
 % findAllDeadStates(A, [X | SL], [X | DL]) :-
 %     deadState(X, A),
@@ -237,19 +247,19 @@ traverseDFS(aut(A, T, I, F, N), [element(ST, [Z | REST]) | Q2]) :-
 %     \+ deadState(X, A),
 %     findAllDeadStates(A, SL, DL).  
 
-empty(A1) :- correct(A1, aut(A, T, I, F, N)),
-    \+ emptyDFS(aut(A, T, I, F, N), I, puste).
+empty(A) :- correct(A, aut(_, T, I, F, _, _)),
+    \+ emptyDFS(T, F, I, puste).
 
-emptyDFS(aut(_, _, _, F, _), ST, _) :-
+emptyDFS(_, F, ST, _) :-
     existsBST(F, ST).
 
 % naprawić z użyciem if-then-else.
-emptyDFS(aut(A, T, I, F, N), ST, V0) :- 
+emptyDFS(T, F, ST, V0) :- 
     insertBST(V0, ST, V1),
     getMap(T, ST, TransList),
     member(trans(_, NextState), TransList),
     \+ existsBST(V1, NextState),
-    emptyDFS(aut(A, T, I, F, N), NextState, V1).
+    emptyDFS(T, F, NextState, V1).
 
 % cartProduct(+X, +Y, ?L).
 cartProduct(X, Y, L) :- cartProductHelp(X, Y, L-[]).
@@ -285,9 +295,9 @@ addAllProductTrans(A, [prod(S1, S2) | SPROD], D1, D2, D0, DPROD) :-
 %     write(FPROD), write("\n"),
 %     createBSTMap(SPROD,  [], DPROD0),
 %     addAllProductTrans(A, SPROD, D1, D2, DPROD0, DPROD).
-    
 
 % https://www.geeksforgeeks.org/sorted-linked-list-to-balanced-bst/
+
 
 % Krzysztof Jankowski
 % Oczekiwany
@@ -319,7 +329,6 @@ example(b4, dfa([fp(1,a,1)], 2, [])).
 example(b4, dfa([fp(1,a,1)], 1, [1,2])).
 example(b5, dfa([], [], [])).
 
-
 testCorrect(X, Z) :- example(X, Y), correct(Y, Z).
 testBadCorrect() :- 
     member(X, [b1, b2, b3, b4, b5]),
@@ -347,10 +356,19 @@ testEmpty() :-
 
 testAccept(X, Z) :- 
     example(X, Y), 
-    debug(Y),
     accept(Y, Z).
+
+testAllInfinite() :-
+    \+ testPositiveInfinite(),
+    \+ testNegativeInfinite().
+testPositiveInfinite() :-
+   member(X, [a11, a12, a2, a3, a4, a5]),
+   \+ testInfinite(X).
+testNegativeInfinite() :-
+    member(X, [k1, k2]),
+    testInfinite(X).
 
 testInfinite(X) :-
     example(X, Y),
     correct(Y, R),
-    infinite(R).
+    isInfinite(R).
