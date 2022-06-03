@@ -2,8 +2,9 @@
 % dzięki wykorzystaniu wyszukiwania binarnego i uporządkowanych list.
 % obecnie mają złożoność O(n^2) w większości.
 
-
-
+% https://stackoverflow.com/questions/18337235/can-you-write-between-3-in-pure-prolog
+bet(N, M, K) :- N =< M, K = N.
+bet(N, M, K) :- N < M, N1 is N + 1, bet(N1, M, K).
 
 dlugosc(A, X) :- lengthHelp(A, 0, X).
 lengthHelp([], X, X).
@@ -202,14 +203,14 @@ correct(dfa(TransList, Init, FinalList),
     createBST(FinalList, FinalSet).
     % Funkcja length nie była pokazywana na wykładzie.
     % findAllDeadStates(S,    
-    
     % \+ notTransition(T, A, S).
  
 infinite(aut(A, T, I, F, N)) :-
     UpperBound is N + N,
-    between(N, UpperBound, WordLength),
-    length(Word,  WordLength),
-    traverseDFS(aut(A, T, I, F, N), [element(I, Word)]).
+    bet(N, UpperBound, WordLength),
+    length(Word, WordLength),
+    traverseDFS(aut(A, T, I, F, N), [element(I, Word)]),
+    !. % Important, we want only one success here.
 
 
 accept(AUT, X) :- correct(AUT, REP), acceptAut(REP, X).
@@ -348,3 +349,8 @@ testAccept(X, Z) :-
     example(X, Y), 
     debug(Y),
     accept(Y, Z).
+
+testInfinite(X) :-
+    example(X, Y),
+    correct(Y, R),
+    infinite(R).
