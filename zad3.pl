@@ -156,6 +156,11 @@ bstToList(wezel(L, W, R), A, K) :-
   bstToList(R, A, K1),
   bstToList(L, [W | K1], K).
 
+% bstSize(T, N) :- bstSize(T, 0, N).
+% bstSize(puste, N0, N).
+% bstSize(wezel(L, _, R), N0, N) :-
+%     bstSize(L, _, R)
+
 % insertAllTransitions(+Tranzycje, +pustaMapa, -mapaPoDodaniu).
 insertAllTransitions([], Map, Map). 
 insertAllTransitions([fp(State, X, DestState) | TransLeft], Map0, Map2) :-
@@ -178,10 +183,10 @@ debug(X) :-
 
 % TODO czy musimy sprawdzać, że nie ma duplikatów w F.
 correct(dfa(TransList, Init, FinalList), 
-        aut(Alphabet, TransMap, Init, FinalSet)) :- 
+        aut(Alphabet, TransMap, Init, FinalSet, NStates)) :- 
     alphabet(TransList, Alphabet),
     Alphabet \= [],
-    createTransMap(TransList, TransMap0, LS),
+    createTransMap(TransList, TransMap0, NStates),
 
     checkDestinations(TransList, TransMap0),
     
@@ -190,7 +195,7 @@ correct(dfa(TransList, Init, FinalList),
 
     length(Alphabet, LA), % tę długość można liczyć przy liczeniu alphabet.
     length(TransList, LT),
-    LT is LA * LS,
+    LT is LA * NStates,
    
     insertAllTransitions(TransList, TransMap0, TransMap),
     
@@ -199,45 +204,26 @@ correct(dfa(TransList, Init, FinalList),
     % findAllDeadStates(S,    
     
     % \+ notTransition(T, A, S).
-
-infinite(aut(A, S, D, I, F)) :-
-    length(S, N),
+ 
+infinite(aut(A, T, I, F, N)) :-
     UpperBound is N + N,
     between(N, UpperBound, WordLength),
     length(Word,  WordLength),
-    traverseDFS(aut(A, S, D, I, F), [element(I, Word)]).
+    traverseDFS(aut(A, T, I, F, N), [element(I, Word)]).
 
 
-% accept(aut(A, S, T, I, F), -X). 
 accept(AUT, X) :- correct(AUT, REP), acceptAut(REP, X).
-acceptAut(aut(A, S, D, I, F), X) :- 
-    % usuniecie tych linijek sprawia, że przestaje działać :) TODO
+acceptAut(aut(A, T, I, F, N), X) :- 
     length(X, _),
-    %  initQ(Q),
-    %  pushQ(element(I, []), Q, QN),
-    % traverseBFS(aut(A, S, T, I, F), [element(I, [], L)], X, X).
+    traverseDFS(aut(A, T, I, F, N), [element(I, X)]).
 
-    traverseDFS(aut(A, S, D, I, F), [element(I, X)]).
-    % traverseBFS(aut(A, S, T, I, F), [element(I, X)]).
-    % closeQ(QN).
-
-% traverseBFS(aut(_, _, _, _, F), [element(ST, []) | _]) :-
-%     member(ST, F),
-%     !.
-% traverseBFS(aut(A, S, T, I, F), [element(ST, [Z | REST]) | Q2]) :-
-%     member(fp(ST, Z, STN), T),
-%     append(Q2, [element(STN, REST)], Q3),
-%     traverseBFS(aut(A, S, T, I, F), Q3).
-
-traverseDFS(aut(_, _, _, _, F), [element(ST, []) | _]) :-
-    existsBST(ST, F),
+traverseDFS(aut(_, _, _, F, _), [element(ST, []) | _]) :-
+    existsBST(F, ST),
     !.
-traverseDFS(aut(A, S, D, I, F), [element(ST, [Z | REST]) | Q2]) :-
-    % member(fp(ST, Z, STN), T),
-    getMap(D, ST, T),
-    member(trans(Z, STN), T),
-    % todo dodać NOT z deadState.
-    traverseDFS(aut(A, S, D, I, F), [element(STN, REST) | Q2]).
+traverseDFS(aut(A, T, I, F, N), [element(ST, [Z | REST]) | Q2]) :-
+    getMap(T, ST, TransList),
+    member(trans(Z, STN), TransList),
+    traverseDFS(aut(A, T, I, F, N), [element(STN, REST) | Q2]).
 
 % deadState(+State, +Aut).
 % deadState(S, A) :- \+ emptyDFS(A, S, []).
@@ -250,19 +236,19 @@ traverseDFS(aut(A, S, D, I, F), [element(ST, [Z | REST]) | Q2]) :-
 %     \+ deadState(X, A),
 %     findAllDeadStates(A, SL, DL).  
 
-empty(A1) :- correct(A1, aut(A, S, D, I, F)),
-   \+ emptyDFS(aut(A, S, D, I, F), I, []).
+empty(A1) :- correct(A1, aut(A, T, I, F, N)),
+    \+ emptyDFS(aut(A, T, I, F, N), I, []).
 
-emptyDFS(aut(_, _, _, _, F), ST, _) :-
-    existsBST(ST, F).
+emptyDFS(aut(_, _, _, F, _), ST, _) :-
+    existsBST(F, ST).
 
 % naprawić z użyciem if-then-else.
-emptyDFS(aut(A, S, D, I, F), ST, V) :- 
+emptyDFS(aut(A, T, I, F, N), ST, V) :- 
     V2 = [ST | V],
-    getMap(D, ST, T),
-    member(trans(_, NST), T),
+    getMap(T, ST, TransList),
+    member(trans(_, NST), TransList),
     \+ member(NST, V2),
-    emptyDFS(aut(A, S, D, I, F), NST, V2).
+    emptyDFS(aut(A, T, I, F, N), NST, V2).
 
 % cartProduct(+X, +Y, ?L).
 cartProduct(X, Y, L) :- cartProductHelp(X, Y, L-[]).
@@ -291,23 +277,14 @@ addAllProductTrans(A, [prod(S1, S2) | SPROD], D1, D2, D0, DPROD) :-
    setMap(prod(S1, S2), TPROD, D0, DPROD1),
    addAllProductTrans(A, SPROD, D1, D2, DPROD1, DPROD).
 
-cap(aut(A, S1, D1, I1, F1), aut(A, S2, D2, I2, F2), aut(A, SPROD, DPROD, prod(I1, I2), FPROD)) :-
-    cartProduct(S1, S2, SPROD),
-    write(SPROD), write("\n"),
-    cartProduct(F1, F2, FPROD),
-    write(FPROD), write("\n"),
-    createBSTMap(SPROD,  [], DPROD0),
-    addAllProductTrans(A, SPROD, D1, D2, DPROD0, DPROD).
+% cap(aut(A, S1, D1, I1, F1), aut(A, S2, D2, I2, F2), aut(A, SPROD, DPROD, prod(I1, I2), FPROD)) :-
+%     cartProduct(S1, S2, SPROD),
+%     write(SPROD), write("\n"),
+%     cartProduct(F1, F2, FPROD),
+%     write(FPROD), write("\n"),
+%     createBSTMap(SPROD,  [], DPROD0),
+%     addAllProductTrans(A, SPROD, D1, D2, DPROD0, DPROD).
     
-% I need to implement bfs traverse as current function is 100% worse!
-% It has exponential running time.
-% todo bfs traverse
-% traversebfs(aut, [(state, word) | Q])
-% traverseBFS(aut
-% albo bfs z akumulatorem
-% traverse(aut, begginingState, [], X)
-% traverse(aut, begginingState, [], 
-
 
 % https://www.geeksforgeeks.org/sorted-linked-list-to-balanced-bst/
 
@@ -355,7 +332,8 @@ testAllCorrect() :- \+ testBadCorrect(),
 testNotEmpty1() :-
     member(X, [b1, b2, b3, b4, b5, a11, a12, a2, a3, a4, a5]),
     example(X, XAUT),
-    empty(XAUT).
+    empty(XAUT),
+    debug(X).
 
 testNotEmpty2() :-
     member(Y, [a6, a7]),
@@ -366,4 +344,8 @@ testEmpty() :-
     \+ testNotEmpty1(),
     \+ testNotEmpty2().
 
-testAccept(X, Z) :- example(X, Y), accept(Y, Z).
+testAccept(X, Z) :- 
+    example(X, Y), 
+    
+    debug(Y),
+    accept(Y, Z).
