@@ -85,11 +85,11 @@ checkDestinations([fp(_, _, X) | L], D) :-
 % Nie usuwać, może się kiedyś przydać.
 % insertIntoTransBSTMap(fp(ST, X, Y), wezel(L, entry(ST, TS), R), wezel(L, entry(ST, [trans(X, Y) | TS]), R)) :-
 %     \+ member(trans(X, Y), TS).
-% insertIntoTransBSTMap(fp(ST, X, Y), wezel(L, entry(NST, T), R), wezel(L2, entry(NST, T), R)) :-
-%     ST @< NST,
+% insertIntoTransBSTMap(fp(ST, X, Y), wezel(L, entry(NextState, T), R), wezel(L2, entry(NST, T), R)) :-
+%     ST @< NextState,
 %     insertIntoTransBSTMap(fp(ST, X, Y), L, L2).
-% insertIntoTransBSTMap(fp(ST, X, Y), wezel(L, entry(NST, T), R), wezel(L, entry(NST, T), R2)) :-
-%     ST @> NST,
+% insertIntoTransBSTMap(fp(ST, X, Y), wezel(L, entry(NextState, T), R), wezel(L, entry(NST, T), R2)) :-
+%     ST @> NextState,
 %     insertIntoTransBSTMap(fp(ST, X, Y), R, R2).
 
 insertBST(puste, X, wezel(puste, X, puste)).
@@ -237,18 +237,18 @@ traverseDFS(aut(A, T, I, F, N), [element(ST, [Z | REST]) | Q2]) :-
 %     findAllDeadStates(A, SL, DL).  
 
 empty(A1) :- correct(A1, aut(A, T, I, F, N)),
-    \+ emptyDFS(aut(A, T, I, F, N), I, []).
+    \+ emptyDFS(aut(A, T, I, F, N), I, puste).
 
 emptyDFS(aut(_, _, _, F, _), ST, _) :-
     existsBST(F, ST).
 
 % naprawić z użyciem if-then-else.
-emptyDFS(aut(A, T, I, F, N), ST, V) :- 
-    V2 = [ST | V],
+emptyDFS(aut(A, T, I, F, N), ST, V0) :- 
+    insertBST(V0, ST, V1),
     getMap(T, ST, TransList),
-    member(trans(_, NST), TransList),
-    \+ member(NST, V2),
-    emptyDFS(aut(A, T, I, F, N), NST, V2).
+    member(trans(_, NextState), TransList),
+    \+ existsBST(V1, NextState),
+    emptyDFS(aut(A, T, I, F, N), NextState, V1).
 
 % cartProduct(+X, +Y, ?L).
 cartProduct(X, Y, L) :- cartProductHelp(X, Y, L-[]).
@@ -346,6 +346,5 @@ testEmpty() :-
 
 testAccept(X, Z) :- 
     example(X, Y), 
-    
     debug(Y),
     accept(Y, Z).
