@@ -186,32 +186,54 @@ checkIfAllStatesExist([S | States], D) :-
 debug(X) :-
     write(X), write("\n").
 
+% removeAllDeadTrans(+TransMap, +DeadStates, ?TransMapAfter)
+removeAllDeadTrans(puste, _, puste).
+removeAllDeadTrans(wezel(L0, entry(S, _), R0), D, wezel(L, entry(S, []), R)) :-
+    existsBST(D, S),
+    !,
+    removeAllDeadTrans(L0, D, L),
+    removeAllDeadTrans(R0, D, R).
+removeAllDeadTrans(wezel(L0, entry(S, T0), R0), D, wezel(L, entry(S, T), R)) :-
+    removeDeadTrans(T0, D, T),
+    removeAllDeadTrans(L0, D, L),
+    removeAllDeadTrans(R0, D, R).
+
+% removeDeadTrans(+TransList, DeadStates, ?TransListAfter) :-
+removeDeadTrans([], _, []).
+removeDeadTrans([trans(_, DeadState) | T0], D, T) :-
+    existsBST(D, DeadState),
+    !, % if then else
+    removeDeadTrans(T0, D, T).
+removeDeadTrans([trans(A, State) | T0], D, [trans(A, State) | T]) :-
+    removeDeadTrans(T0, D, T).
+
 % TODO czy musimy sprawdzać, że nie ma duplikatów w F.
 correct(dfa(TransList, Init, FinalList), aut(Alphabet, TransMap, Init, FinalSet, NStates, inf)) :- 
     alphabet(TransList, Alphabet, LA),
     Alphabet \= puste,
     
     createTransMap(TransList, TransMap0, NStates),
-
-    checkDestinations(TransList, TransMap0),
     
+    checkDestinations(TransList, TransMap0),
     checkIfAllStatesExist(FinalList, TransMap0),
     existsMap(Init, TransMap0),
 
     length(TransList, LT),
     LT is LA * NStates,
-   
-    insertAllTransitions(TransList, TransMap0, TransMap),
-    
+  
     createBST(FinalList, FinalSet),
-   
-    % infinityCheck(aut(Alphabet, TransMap, Init, FinalSet, NStates, _), Infinity),
     
+    insertAllTransitions(TransList, TransMap0, TransMap1),
+    % infinityCheck(aut(Alphabet, TransMap, Init, FinalSet, NStates, _), Infinity),
 % findAllDeadStates(+StateEntries, +FinalSet, +TransMap, DeadStatesBefore, DeadStatesAfter).
-    bstToList(TransMap, StateEntries),
-    findAllDeadStates(StateEntries, FinalSet, TransMap, puste, DeadStates),
+    bstToList(TransMap1, StateEntries),
+    findAllDeadStates(StateEntries, FinalSet, TransMap1, puste, DeadStates),
     debug(DeadStates),
+    
+    removeAllDeadTrans(TransMap1, DeadStates, TransMap),
+
     !. % Representation is unequivocal, there is no need to search any further. 
+
 
 
 isInfinite(aut(_, T, I, F, N, _)) :-
