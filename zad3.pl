@@ -36,15 +36,18 @@ listOfLength(X, [_ | L]) :-
     X2 is X - 1,
     listOfLength(X2, L).
 
-% alphabet(+Transitions, ?Alphabet)
-alphabet(T, A) :- alphabet(T, [], A).
-alphabet([], A, A).
-alphabet([fp(_, C, _) | L], R, A) :- 
-    \+ member(C, R), !, 
-    alphabet(L , [C | R], A).
-alphabet([fp(_, C, _) | L], R, A) :- 
-    member(C, R), 
-    alphabet(L , R, A).
+% alphabet(+Transitions, ?Alphabet, ?SizeOfAlphabet)
+alphabet(T, A, N) :- alphabet(T, puste, A, 0, N).
+alphabet([], A, A, N, N).
+alphabet([fp(_, C, _) | L], A0, A, N0, N) :- 
+    \+ existsBST(A0, C), 
+    !,
+    insertBST(A0, C, A1),
+    N1 is N0 + 1, 
+    alphabet(L, A1, A, N1, N).
+alphabet([fp(_, C, _) | L], A0, A, N0, N) :- 
+    existsBST(A0, C), 
+    alphabet(L, A0, A, N0, N).
 
 % createTransMap(+TransitionList, ?StatesTransitionsMap, ?Len)
 createTransMap(T, S, N) :- createTransMap(T, puste, S, 0, N).
@@ -158,9 +161,9 @@ bstToList(wezel(L, W, R), A, K) :-
   bstToList(L, [W | K1], K).
 
 % bstSize(T, N) :- bstSize(T, 0, N).
-% bstSize(puste, N0, N).
+% bstSize(puste, N, N).
 % bstSize(wezel(L, _, R), N0, N) :-
-%     bstSize(L, _, R)
+%     bstSize(
 
 % insertAllTransitions(+Tranzycje, +pustaMapa, -mapaPoDodaniu).
 insertAllTransitions([], Map, Map). 
@@ -184,9 +187,10 @@ debug(X) :-
     write(X), write("\n").
 
 % TODO czy musimy sprawdzać, że nie ma duplikatów w F.
-correct(dfa(TransList, Init, FinalList), aut(Alphabet, TransMap, Init, FinalSet, NStates, Infinity)) :- 
-    alphabet(TransList, Alphabet),
-    Alphabet \= [],
+correct(dfa(TransList, Init, FinalList), aut(Alphabet, TransMap, Init, FinalSet, NStates, inf)) :- 
+    alphabet(TransList, Alphabet, LA),
+    Alphabet \= puste,
+    
     createTransMap(TransList, TransMap0, NStates),
 
     checkDestinations(TransList, TransMap0),
@@ -194,7 +198,6 @@ correct(dfa(TransList, Init, FinalList), aut(Alphabet, TransMap, Init, FinalSet,
     checkIfAllStatesExist(FinalList, TransMap0),
     existsMap(Init, TransMap0),
 
-    length(Alphabet, LA), % tę długość można liczyć przy liczeniu alphabet.
     length(TransList, LT),
     LT is LA * NStates,
    
@@ -202,7 +205,12 @@ correct(dfa(TransList, Init, FinalList), aut(Alphabet, TransMap, Init, FinalSet,
     
     createBST(FinalList, FinalSet),
    
-    infinityCheck(aut(Alphabet, TransMap, Init, FinalSet, NStates, _), Infinity),
+    % infinityCheck(aut(Alphabet, TransMap, Init, FinalSet, NStates, _), Infinity),
+    
+% findAllDeadStates(+StateEntries, +FinalSet, +TransMap, DeadStatesBefore, DeadStatesAfter).
+    bstToList(TransMap, StateEntries),
+    findAllDeadStates(StateEntries, FinalSet, TransMap, puste, DeadStates),
+    debug(DeadStates),
     !. % Representation is unequivocal, there is no need to search any further. 
 
 
@@ -235,20 +243,65 @@ traverseDFS([C | Rest], T, F, CurrState):-
     member(trans(C, NextState), TransList),
     traverseDFS(Rest, T, F, NextState).
 
-% deadState(+State, +Aut).
-deadState(S, A) :- \+ emptyDFS(A, S, []).
+% findAllDeadStates(+StateEntries, +FinalSet, +TransMap, DeadStatesBefore, DeadStatesAfter).
+findAllDeadStates([], _, _, D, D).
+findAllDeadStates([entry(CurrState, _) | States], F, T, D0, D) :-
+    % write("Checking node "), write(CurrState), write(" currently "), debug(D0),
+    % write(" remaining"), write(States), write("\n"),
+    \+ existsBST(D0, CurrState),
+    !, % zamiast odciecia lepiej użyć if then else.
+    findAllDeadStatesHelp([CurrState | States], F, T, D0, D).
+findAllDeadStates([_ | States], F, T, D0, D) :-
+    findAllDeadStates(States, F, T, D0, D).
 
-% findAllDeadStates(_, [], []).
-% findAllDeadStates(A, [X | SL], [X | DL]) :-
-%     deadState(X, A),
-%     !,
-%     findAllDeadStates(A, SL, DL).
-% findAllDeadStates(A, [X | SL], DL) :-
-%     \+ deadState(X, A),
-%     findAllDeadStates(A, SL, DL).  
+findAllDeadStatesHelp([CurrState | States], F, T, D0, D) :-
+    insertBST(D0, CurrState, D1),
+    visitDeadStates([CurrState], F, T, D1, D2),
+    !, % zamiast odciecia lepiej użyć if then else.
+    findAllDeadStates(States, F, T, D2, D).
+findAllDeadStatesHelp([_ | States], F, T, D0, D) :-
+    % \+ visitDeadStates([CurrState], F, T, D0, _),
+    findAllDeadStates(States, F, T, D0, D).
+
+visitDeadStates([], _, _, D, D).
+visitDeadStates([CurrState | Stack], F, T, D0, D) :-
+    % write(CurrState), write(Stack), write(" "), write(D0), write("\n"),
+    \+ existsBST(F, CurrState),
+    getMap(T, CurrState, TransList),
+    addNextStates(TransList, Stack, StackAfter, D0, D2, F),
+    % write(CurrState), write(": sucessfully added states "), write(Stack), write("\n"),
+    visitDeadStates(StackAfter, F, T, D2, D).
+
+addNextStates([], S, S, V, V, _).
+addNextStates([trans(_, NextState) | TL], S0, S, V0, V, F) :-
+    \+ existsBST(V0, NextState),
+    !, % if then else
+    insertBST(V0, NextState, V1),
+    addNextStates(TL, [NextState | S0], S, V1, V, F).    
+addNextStates([trans(_, NextState) | TL], S0, S, V0, V, F) :-
+    existsBST(V0, NextState),
+    addNextStates(TL, S0, S, V0, V, F).    
 
 empty(A) :- correct(A, aut(_, T, I, F, _, _)),
-    \+ emptyDFS(T, F, I, puste).
+    \+ emptyDFSstack([I], T, F, tree(puste, I, puste)).
+
+emptyDFSstack([CurrState | _], _, F, _) :-
+    existsBST(F, CurrState).
+emptyDFSstack([CurrState | Stack0], T, F, V0) :-
+    getMap(T, CurrState, TransList),
+    addNextStates(TransList, Stack0, Stack1, V0, V1),
+    emptyDFSstack(Stack1, T, F, V1).
+
+% addNextStates(+TranList, +StackBefore, ?StackAfter, +VisitedBefore, ?VisitedAfter)
+addNextStates([], S, S, V, V).
+addNextStates([trans(_, NextState) | TL], S0, S, V0, V) :-
+    \+ existsBST(V0, NextState),
+    !,    
+    insertBST(V0, NextState, V1),
+    addNextStates(TL, [NextState | S0], S, V1, V).    
+addNextStates([trans(_, NextState) | TL], S0, S, V0, V) :-
+    existsBST(V0, NextState),
+    addNextStates(TL, S0, S, V0, V).    
 
 emptyDFS(_, F, ST, _) :-
     existsBST(F, ST).
@@ -332,10 +385,12 @@ example(b5, dfa([], [], [])).
 testCorrect(X, Z) :- example(X, Y), correct(Y, Z).
 testBadCorrect() :- 
     member(X, [b1, b2, b3, b4, b5]),
-    testCorrect(X, _).
+    testCorrect(X, _),
+    debug(X).
 testGoodCorrect() :-
     member(X, [a11, a12, a2, a3, a4, a5, a6, a7]),
-    \+ testCorrect(X, _).
+    \+ testCorrect(X, _),
+    debug(X).
 testAllCorrect() :- \+ testBadCorrect(),
     \+ testGoodCorrect().
 
