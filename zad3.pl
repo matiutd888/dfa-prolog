@@ -225,7 +225,7 @@ correct(dfa(TransList, Init, FinalList), aut(Alphabet, TransMap, Init, FinalSet,
     
     insertAllTransitions(TransList, TransMap0, TransMap1),
     % infinityCheck(aut(Alphabet, TransMap, Init, FinalSet, NStates, _), Infinity),
-% findAllDeadStates(+StateEntries, +FinalSet, +TransMap, DeadStatesBefore, DeadStatesAfter).
+    
     bstToList(TransMap1, StateEntries),
     findAllDeadStates(StateEntries, FinalSet, TransMap1, puste, DeadStates),
     debug(DeadStates),
@@ -233,7 +233,6 @@ correct(dfa(TransList, Init, FinalList), aut(Alphabet, TransMap, Init, FinalSet,
     removeAllDeadTrans(TransMap1, DeadStates, TransMap),
 
     !. % Representation is unequivocal, there is no need to search any further. 
-
 
 
 isInfinite(aut(_, T, I, F, N, _)) :-
@@ -271,7 +270,7 @@ findAllDeadStates([entry(CurrState, _) | States], F, T, D0, D) :-
     % write("Checking node "), write(CurrState), write(" currently "), debug(D0),
     % write(" remaining"), write(States), write("\n"),
     \+ existsBST(D0, CurrState),
-    !, % zamiast odciecia lepiej użyć if then else.
+    !, % if then else
     findAllDeadStatesHelp([CurrState | States], F, T, D0, D).
 findAllDeadStates([_ | States], F, T, D0, D) :-
     findAllDeadStates(States, F, T, D0, D).
@@ -290,20 +289,31 @@ visitDeadStates([CurrState | Stack], F, T, D0, D) :-
     % write(CurrState), write(Stack), write(" "), write(D0), write("\n"),
     \+ existsBST(F, CurrState),
     getMap(T, CurrState, TransList),
-    addNextStates(TransList, Stack, StackAfter, D0, D2, F),
+    addNextStates(TransList, Stack, StackAfter, D0, D2),
     % write(CurrState), write(": sucessfully added states "), write(Stack), write("\n"),
     visitDeadStates(StackAfter, F, T, D2, D).
 
-addNextStates([], S, S, V, V, _).
-addNextStates([trans(_, NextState) | TL], S0, S, V0, V, F) :-
-    \+ existsBST(V0, NextState),
-    !, % if then else
-    insertBST(V0, NextState, V1),
-    addNextStates(TL, [NextState | S0], S, V1, V, F).    
-addNextStates([trans(_, NextState) | TL], S0, S, V0, V, F) :-
-    existsBST(V0, NextState),
-    addNextStates(TL, S0, S, V0, V, F).    
+cycleAut(aut(_, T, I, _, _, _)) :- cycle(I, T).
 
+cycle(I, T) :-
+    cycle(I, puste, T). 
+
+% Tutaj można bardziej optymalnie (sprawdzać cykl przy dodaniu krawędzi).
+cycle(CurrState, V, _) :-
+    existsBST(V, CurrState),
+    !.
+cycle(CurrState, V, T) :-
+    insertBST(V, CurrState, V1),
+    getMap(T, CurrState, TransList),
+    member(trans(_, NextState), TransList),
+    cycle(NextState, V1, T),
+    !. % Jeżeli znajdziemy cykl po wybraniu stanu nie chcemy by próbowało wybierać dalej.
+
+addNoVisitedCheck([], S, S).
+addNoVisitedCheck([trans(_, NextState) | TL], S0, S) :-
+    addNoVisitedCheck(TL, [NextState | S0], S).    
+
+ 
 empty(A) :- correct(A, aut(_, T, I, F, _, _)),
     \+ emptyDFSstack([I], T, F, tree(puste, I, puste)).
 
@@ -318,23 +328,12 @@ emptyDFSstack([CurrState | Stack0], T, F, V0) :-
 addNextStates([], S, S, V, V).
 addNextStates([trans(_, NextState) | TL], S0, S, V0, V) :-
     \+ existsBST(V0, NextState),
-    !,    
+    !, % if then else
     insertBST(V0, NextState, V1),
     addNextStates(TL, [NextState | S0], S, V1, V).    
 addNextStates([trans(_, NextState) | TL], S0, S, V0, V) :-
     existsBST(V0, NextState),
     addNextStates(TL, S0, S, V0, V).    
-
-emptyDFS(_, F, ST, _) :-
-    existsBST(F, ST).
-
-% naprawić z użyciem if-then-else.
-emptyDFS(T, F, ST, V0) :- 
-    insertBST(V0, ST, V1),
-    getMap(T, ST, TransList),
-    member(trans(_, NextState), TransList),
-    \+ existsBST(V1, NextState),
-    emptyDFS(T, F, NextState, V1).
 
 % cartProduct(+X, +Y, ?L).
 cartProduct(X, Y, L) :- cartProductHelp(X, Y, L-[]).
