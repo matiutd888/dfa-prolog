@@ -31,7 +31,8 @@ assert compare_word_sets(result, itertools.product(['a', 'b'], repeat=3))
 */
 
 test15(Var) :- example(a11, A), accept(A, Var).
-%py assert contains_words(result, [['a', 'b'], ['a', 'a', 'b']])
+%%py print(result)
+%py assert contains_words(result, [['a', 'b'], ['b', 'a', 'b']])
 
 
 % Additional tests.

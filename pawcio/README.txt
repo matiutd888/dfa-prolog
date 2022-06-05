@@ -2,11 +2,11 @@
 Testing tool for task 3
 
 How to run the tests:
-- In order to run the tests, simply put your solution as as solution.py in this directory and run python3 run_tests.py
+- In order to run the tests, simply put your solution as solution.pl in this directory and run python3 run_tests.py
   on students.
 - If you get failures, you can check out the tests under the tests/ directory. All the automata are defined under
   the automata/ directory and rendered as graphs in the graphviz directory. You can rerender the graphics using
-  python3 graphviz.py on Linux.
+  python3 run_graphviz.py on Linux.
 - Note that you can NOT edit tests/automata.pl too easily since it's regenerated every time you use run_tests.py. You
   can comment out the create_automata_file() invocation if you are not fond of this behavior.
 
@@ -63,7 +63,7 @@ and when it encounters one of these comments it evaluates it. When it encounters
 predicate it notes it down, and also waits for the predicate to be evaluated by the Prolog interpreter. Afterwards the
 execution results are saved, parsed and available in the Python blocks under the result variable. Please note that any
 errors in the Python execution will make the last interpreted test fail.
-Only the first 100 results are available in Python and the interpreter is set to time out after 100ms by default.
+Only the first 1000000 results are available in Python and the interpreter is set to time out after 100ms by default.
 
 In addition, the following snippets can be used:
 

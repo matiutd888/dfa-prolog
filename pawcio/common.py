@@ -39,7 +39,7 @@ def parse_dfa_file(lines):
             dfa.start_state = l[len('start '):].strip()
             continue
         if l.startswith('accept '):
-            dfa.accept_states += [x.strip() for x in l[len('accept '):].split(' ')]
+            dfa.accept_states += [x.strip() for x in l[len('accept '):].split(' ') if x.strip() != '']
             continue
         items = [x.strip() for x in l.split(' ')]
         if len(items) == 3:

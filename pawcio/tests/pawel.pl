@@ -44,19 +44,21 @@ test_state_before_start_2_accept(R) :- pawel(state_before_start_2, A), accept(A,
 %py assert compare_word_sets(result, [['a']])
 test_state_before_start_3_accept(R) :- pawel(state_before_start_3, A), accept(A, R).
 %py assert compare_word_sets(result, [['a'], ['b']])
+
 test_loop_in_another_branch_1a_accept(R) :- pawel(loop_in_another_branch_1a, A), accept(A, [a | R]).
 %py assert compare_word_sets(result, [[]])
-test_loop_in_another_branch_1b_accept(R) :- pawel(loop_in_another_branch_1a, A), accept(A, [a | R]).
+test_loop_in_another_branch_1b_accept(R) :- pawel(loop_in_another_branch_1b, A), accept(A, [b | R]).
 %py assert compare_word_sets(result, [[]])
-test_loop_in_another_branch_2a_accept(R) :- pawel(loop_in_another_branch_2a, A), accept(A, [_ | [a | R]]).
-%py assert compare_word_sets(result, [[]])
+
+% test_loop_in_another_branch_2a_accept(R) :- pawel(loop_in_another_branch_2a, A), accept(A, [_ | [a | R]]).
+% %py assert compare_word_sets(result, [[]])
 test_loop_in_another_branch_2a_accept2(R) :- pawel(loop_in_another_branch_2a, A), accept(A, R).
-%py assert contains_words(result, [['a'], ['b'], ['b', 'b'], ['b', 'b', 'b']])
-test_loop_in_another_branch_2a_accept3(R) :- pawel(loop_in_another_branch_2a, A), accept(A, [_ | R]).
-%py assert contains_words(result, [[], ['b'], ['b', 'b']])
-test_loop_in_another_branch_2b_accept(R) :- pawel(loop_in_another_branch_2b, A), accept(A, [_ | [a | R]]).
-%py assert compare_word_sets(result, [[]])
+%py assert contains_words(result, [['a', 'a'], ['b'], ['b', 'b'], ['b', 'b', 'b']])
+% test_loop_in_another_branch_2a_accept3(R) :- pawel(loop_in_another_branch_2a, A), accept(A, [_ | R]).
+% %py assert contains_words(result, [[], ['b'], ['b', 'b']])
+% test_loop_in_another_branch_2b_accept(R) :- pawel(loop_in_another_branch_2b, A), accept(A, [_ | [b | R]]).
+% %py assert compare_word_sets(result, [[]])
 test_loop_in_another_branch_2b_accept2(R) :- pawel(loop_in_another_branch_2b, A), accept(A, R).
-%py assert contains_words(result, [['a'], ['a', 'a'], ['a', 'a', 'a']])
-test_loop_in_another_branch_2b_accept3(R) :- pawel(loop_in_another_branch_2b, A), accept(A, [_ | R]).
-%py assert contains_words(result, [[], ['a'], ['a', 'a']])
+%py assert contains_words(result, [['b', 'b'], ['a'], ['a', 'a'], ['a', 'a', 'a']])
+% test_loop_in_another_branch_2b_accept3(R) :- pawel(loop_in_another_branch_2b, A), accept(A, [_ | R]).
+% %py assert contains_words(result, [[], ['a'], ['a', 'a']])

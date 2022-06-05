@@ -74,11 +74,13 @@ class TestRunner:
         self.prolog_finished = {}
         self.finished = set()
         self.should_expect = None
+        self.print_pass = True
 
     def finish_pred(self, name):
         if name is None or name in self.finished:
             return
-        print('[PASS] ' + name)
+        if self.print_pass:
+            print('[PASS] ' + name)
         self.finished.add(name)
 
     def fail_pred(self, name, error):
@@ -144,6 +146,9 @@ class TestRunner:
             if self.solution_counts[name] > 0:
                 self.fail_pred(name, 'did not fail')
 
+    def set_print_pass(self, print_pass):
+        self.print_pass = print_pass
+
     def expect_success(self):
         self.should_expect = 'success'
 
@@ -168,6 +173,7 @@ def run_tests_in_file(file_path):
 
     runner = TestRunner(proc)
     runner.globals = {
+        'set_print_pass': runner.set_print_pass,
         'expect_success': runner.expect_success,
         'expect_single_solution': runner.expect_single_solution,
         'expect_fail': runner.expect_fail,
@@ -201,4 +207,5 @@ def run_tests_in_file(file_path):
 create_automata_file()
 for file_path in TESTS_DIR.glob('*.pl'):
     if file_path != TESTS_DIR / 'automata.pl':
+    # if file_path == TESTS_DIR / 'gentest.pl':
         run_tests_in_file(file_path)
