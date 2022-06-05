@@ -49,18 +49,24 @@ alphabet([fp(_, C, _) | L], A0, A, N0, N) :-
     existsBST(A0, C), 
     alphabet(L, A0, A, N0, N).
 
-% createTransMap(+TransitionList, ?StatesTransitionsMap, ?Len)
-createTransMap(T, S, N) :- createTransMap(T, puste, S, 0, N).
-createTransMap([], S, S, N, N).
-createTransMap([fp(State, _, _) | L], S0, S, N0, N) :- 
-    \+ existsMap(State, S0),
+% createTransMap(+TransitionList, +DeadStates, ?StatesTransitionsMap, ?Len)
+createTransMap(T, D, S, N) :- createTransMap(T, D, puste, S, 0, N).
+createTransMap([], _, S, S, N, N).
+createTransMap([fp(State, _, _) | L], D, S0, S, N0, N) :- 
+    existsMap(S0, State),
+    !,
+    createTransMap(L, D, S0, S, N0, N).
+createTransMap([fp(State, _, _) | L], D, S0, S, N0, N) :- 
+    existsBST(D, State),
+    !,
+    createTransMap(L, D, S0, S, N0, N).
+createTransMap([fp(State, _, _) | L], D,  S0, S, N0, N) :- 
+    \+ existsMap(S0, State),
+    \+ existsBST(D, State),
     N1 is N0 + 1,
     !, 
     insertBST(S0, entry(State, []), S1),
-    createTransMap(L, S1, S, N1, N).
-createTransMap([fp(State, _, _) | L], S0, S, N0, N) :- 
-    existsMap(State, S0),
-    createTransMap(L, S0, S, N0, N).
+    createTransMap(L, D, S1, S, N1, N).
 
 % notTransition(+transitions, +alphabet, +states)
 % notTransition(T, A, S) :- member(A1, A), 
@@ -76,7 +82,7 @@ odwroc([X | L], Z, R) :- odwroc(L, [X | Z], R).
 % cele tranzycji są w stanach.
 checkDestinations([], _).
 checkDestinations([fp(_, _, X) | L], D) :- 
-    existsMap(X, D),
+    existsMap(D, X),
     checkDestinations(L, D).
 
 % checkTransitionDuplicates(+list tranzycji)
@@ -160,27 +166,43 @@ bstToList(wezel(L, W, R), A, K) :-
   bstToList(R, A, K1),
   bstToList(L, [W | K1], K).
 
+listToBST(L, D) :-
+    listToBST(L, [], D).
+listToBST([], D, D).
+listToBST([X | L], D0, D) :-
+    insertBST(D0, X, D1),
+    listToBST(L, D1, D).
+
 % bstSize(T, N) :- bstSize(T, 0, N).
 % bstSize(puste, N, N).
 % bstSize(wezel(L, _, R), N0, N) :-
 %     bstSize(
 
-% insertAllTransitions(+Tranzycje, +pustaMapa, -mapaPoDodaniu).
-insertAllTransitions([], Map, Map). 
-insertAllTransitions([fp(State, X, DestState) | TransLeft], Map0, Map) :-
+% insertAllTransitions(+Tranzycje, +DeadStates, +pustaMapa, -mapaPoDodaniu).
+insertAllTransitions([], _, Map, Map). 
+insertAllTransitions([fp(State, X, DestState) | TransLeft], D, Map0, Map) :-
+    \+ existsBST(D, DestState),
+    \+ existsBST(D, State),
+    % !, % Czerwone odcięcie
     getMap(Map0, State, StateTransitions),
     % TODO to trzeba inaczej
     \+ member(trans(X, _), StateTransitions),
     setMap(State, [trans(X, DestState) | StateTransitions], Map0, Map1),
-    insertAllTransitions(TransLeft, Map1, Map).
+    insertAllTransitions(TransLeft, D, Map1, Map).
+insertAllTransitions([fp(_, _, DestState) | TransLeft], D, Map0, Map) :-
+    existsBST(D, DestState),
+    insertAllTransitions(TransLeft, D, Map0, Map).
+insertAllTransitions([fp(State, _, _) | TransLeft], D, Map0, Map) :-
+    existsBST(D, State),
+    insertAllTransitions(TransLeft, D, Map0, Map).
 
 % existsMap(+state, +transMap):
-existsMap(State, Map) :-
+existsMap(Map, State) :-
     getMap(Map, State,  _).
 
 checkIfAllStatesExist([], _).
 checkIfAllStatesExist([S | States], D) :-
-    existsMap(S, D),
+    existsMap(D, S),
     checkIfAllStatesExist(States, D).
 
 debug(X) :-
@@ -208,30 +230,33 @@ removeDeadTrans([trans(A, State) | T0], D, [trans(A, State) | T]) :-
     removeDeadTrans(T0, D, T).
 
 % TODO czy musimy sprawdzać, że nie ma duplikatów w F.
-correct(dfa(TransList, Init, FinalList), aut(Alphabet, TransMap, Init, FinalSet, NStates, inf)) :- 
+correct(dfa(TransList, Init, FinalList), aut(Alphabet, TransMapOriginal, TransMap, Init, FinalSet, NRealStates, inf)) :- 
     alphabet(TransList, Alphabet, LA),
     Alphabet \= puste,
     
-    createTransMap(TransList, TransMap0, NStates),
+    createTransMap(TransList, puste, TransMap0, NStates),
     
     checkDestinations(TransList, TransMap0),
     checkIfAllStatesExist(FinalList, TransMap0),
-    existsMap(Init, TransMap0),
+    existsMap(TransMap0, Init),
 
     length(TransList, LT),
     LT is LA * NStates,
   
     createBST(FinalList, FinalSet),
     
-    insertAllTransitions(TransList, TransMap0, TransMap1),
+    insertAllTransitions(TransList, puste, TransMap0, TransMapOriginal),
     % infinityCheck(aut(Alphabet, TransMap, Init, FinalSet, NStates, _), Infinity),
     
-    bstToList(TransMap1, StateEntries),
-    findAllDeadStates(StateEntries, FinalSet, TransMap1, puste, DeadStates),
-    debug(DeadStates),
-    
-    removeAllDeadTrans(TransMap1, DeadStates, TransMap),
-
+    bstToList(TransMap0, StateEntries),
+    findAllDeadStates(StateEntries, FinalSet, TransMapOriginal, puste, DeadStates),
+    % debug("DeadStates"),
+    % debug(DeadStates), 
+    createTransMap(TransList, DeadStates, TransMap2, NRealStates),
+    % debug("TransMap"), 
+    % debug(TransMap2),
+    insertAllTransitions(TransList, DeadStates, TransMap2, TransMap),
+    % debug(DeadStates),
     !. % Representation is unequivocal, there is no need to search any further. 
 
 
@@ -248,10 +273,10 @@ infinityCheck(A, notInf) :- \+ isInfinite(A).
 accept(Aut, X) :- 
     correct(Aut, Rep), 
     acceptAut(Rep, X).
-acceptAut(aut(_, T, I, F, _, inf), X) :- 
+acceptAut(aut(_, _, T, I, F, _, inf), X) :- 
     length(X, _),
     traverseDFS(X, T, F, I).
-acceptAut(aut(_, T, I, F, N, notInf), X) :- 
+acceptAut(aut(_, _, T, I, F, N, notInf), X) :- 
     bet(0, N, XLen),
     length(X, XLen),
     traverseDFS(X, T, F, I).
@@ -313,8 +338,7 @@ addNoVisitedCheck([], S, S).
 addNoVisitedCheck([trans(_, NextState) | TL], S0, S) :-
     addNoVisitedCheck(TL, [NextState | S0], S).    
 
- 
-empty(A) :- correct(A, aut(_, T, I, F, _, _)),
+empty(A) :- correct(A, aut(_, _, T, I, F, _, _)),
     \+ emptyDFSstack([I], T, F, tree(puste, I, puste)).
 
 emptyDFSstack([CurrState | _], _, F, _) :-
@@ -346,10 +370,8 @@ cartHandleHelp([], _, L-L).
 cartHandleHelp([H | T], X, [prod(X, H)| R]-L) :- 
     cartHandleHelp(T, X, R-L).
 
-% prodStateTrans(A, prod(S1, S2), T1, T2) :-
-
 prodStateTrans([], _, _, _). 
-prodStateTrans([X | A], T1, T2, [prod(Y1, Y2) | TPROD]) :-
+prodStateTrans([X | A], T1, T2, [trans(X, prod(Y1, Y2)) | TPROD]) :-
     member(trans(X, Y1), T1),
     member(trans(X, Y2), T2),
     prodStateTrans(A, T1, T2, TPROD).
@@ -362,14 +384,49 @@ addAllProductTrans(A, [prod(S1, S2) | SPROD], D1, D2, D0, DPROD) :-
    setMap(prod(S1, S2), TPROD, D0, DPROD1),
    addAllProductTrans(A, SPROD, D1, D2, DPROD1, DPROD).
 
-% cap(aut(A, S1, D1, I1, F1), aut(A, S2, D2, I2, F2), aut(A, SPROD, DPROD, prod(I1, I2), FPROD)) :-
-%     cartProduct(S1, S2, SPROD),
-%     write(SPROD), write("\n"),
-%     cartProduct(F1, F2, FPROD),
-%     write(FPROD), write("\n"),
-%     createBSTMap(SPROD,  [], DPROD0),
-%     addAllProductTrans(A, SPROD, D1, D2, DPROD0, DPROD).
+keysListFromMap(T, KL) :-
+    bstToList(T, TL),
+    keysListFromEntriesList(TL, KL).
 
+% keysListFromEntriesList(+EL, -KL)
+keysListFromEntriesList([], []).
+keysListFromEntriesList([entry(K, _) | EL], [K | KL]) :-
+    keysListFromEntriesList(EL, KL).
+
+capEmpty(A, (T1, I1, F1), (T2, I2, F2)) :-
+    bstToList(A, AL),
+    keysListFromMap(T1, S1),
+    keysListFromMap(T2, S2),
+    debug((S1, S2)),
+    cartProduct(S1, S2, SPROD),
+    debug(("Sprod: ", SPROD)), 
+    cartProduct(F1, F2, FPROD),
+    createBSTMap(SPROD,  [], TPROD0),
+    addAllProductTrans(AL, SPROD, T1, T2, TPROD0, TPROD),
+    \+ emptyDFSstack([prod(I1, I2)], TPROD, FPROD, tree(puste, prod(I1, I2), puste)). 
+
+% complement(+L, +F, -FComplement)
+% Creates set of elements from L that are not present in F.
+complement(L, F, FC) :- complement(L, F, puste, FC).
+complement([], _, FC, FC).
+complement([X | L], F, FC0, FC) :-
+    \+ existsBST(F, X),
+    !,
+    insertBST(FC0, X, FC1),
+    complement(L, F, FC1, FC).
+complement([X | L], F, FC0, FC) :-
+    existsBST(F, X), % TODO To potrzebne by odciecie było zielone. Nie wiem czy to używać.
+    complement(L, F, FC0, FC).
+
+subsetEq(A1, A2) :-
+    correct(A1, aut(Alph1, TO1, _, I1, F1, _, _)),
+    correct(A2, aut(Alph2, TO2, _, I2, F2, _, _)),
+    debug("elo"),
+    bstToList(Alph1, AL),
+    bstToList(Alph2, AL),
+    keysListFromMap(TO2, S2),
+    complement(S2, F2, FC2),
+    capEmpty(Alph1, (TO1, F1, I1), (TO2, FC2, I2)).    
 % https://www.geeksforgeeks.org/sorted-linked-list-to-balanced-bst/
 
 
@@ -381,29 +438,29 @@ addAllProductTrans(A, [prod(S1, S2) | SPROD], D1, D2, D0, DPROD) :-
 % b, a
 % b, b
 % b, b, a
-example(k1, dfa([fp(1,a,3), fp(1, b, 2), fp(2, b, 3), fp(2, a, 4), fp(3, a, 4), fp(3, b, 5), fp(4, a, 5), fp(4, b, 5), fp(5, a, 5), fp(5, b, 5)], 1, [2,3,4])).
-example(k2, dfa([fp(1,a,3), fp(1, b, 2), fp(2, b, 3), fp(2, a, 4), fp(3, a, 4), fp(3, b, 5), fp(4, a, 5), fp(4, b, 5), fp(5, a, 6), fp(5, b, 6), fp(6, a, 7), fp(6, b, 7), fp(7, a, 5), fp(7, b, 5)], 1, [2,3,4])).
+my_example(k1, dfa([fp(1,a,3), fp(1, b, 2), fp(2, b, 3), fp(2, a, 4), fp(3, a, 4), fp(3, b, 5), fp(4, a, 5), fp(4, b, 5), fp(5, a, 5), fp(5, b, 5)], 1, [2,3,4])).
+my_example(k2, dfa([fp(1,a,3), fp(1, b, 2), fp(2, b, 3), fp(2, a, 4), fp(3, a, 4), fp(3, b, 5), fp(4, a, 5), fp(4, b, 5), fp(5, a, 6), fp(5, b, 6), fp(6, a, 7), fp(6, b, 7), fp(7, a, 5), fp(7, b, 5)], 1, [2,3,4])).
 
 
-example(a11, dfa([fp(1,a,1),fp(1,b,2),fp(2,a,2),fp(2,b,1)], 1, [2,1])).
-example(a12, dfa([fp(x,a,y),fp(x,b,x),fp(y,a,x),fp(y,b,x)], x, [x,y])).
-example(a2, dfa([fp(1,a,2),fp(2,b,1),fp(1,b,3),fp(2,a,3),
+my_example(a11, dfa([fp(1,a,1),fp(1,b,2),fp(2,a,2),fp(2,b,1)], 1, [2,1])).
+my_example(a12, dfa([fp(x,a,y),fp(x,b,x),fp(y,a,x),fp(y,b,x)], x, [x,y])).
+my_example(a2, dfa([fp(1,a,2),fp(2,b,1),fp(1,b,3),fp(2,a,3),
 fp(3,b,3),fp(3,a,3)], 1, [1])).
-example(a3, dfa([fp(0,a,1),fp(1,a,0)], 0, [0])).
-example(a4, dfa([fp(x,a,y),fp(y,a,z),fp(z,a,x)], x, [x])).
-example(a5, dfa([fp(x,a,y),fp(y,a,z),fp(z,a,zz),fp(zz,a,x)], x, [x])).
-example(a6, dfa([fp(1,a,1),fp(1,b,2),fp(2,a,2),fp(2,b,1)], 1, [])).
-example(a7, dfa([fp(1,a,1),fp(1,b,2),fp(2,a,2),fp(2,b,1),
+my_example(a3, dfa([fp(0,a,1),fp(1,a,0)], 0, [0])).
+my_example(a4, dfa([fp(x,a,y),fp(y,a,z),fp(z,a,x)], x, [x])).
+my_example(a5, dfa([fp(x,a,y),fp(y,a,z),fp(z,a,zz),fp(zz,a,x)], x, [x])).
+my_example(a6, dfa([fp(1,a,1),fp(1,b,2),fp(2,a,2),fp(2,b,1)], 1, [])).
+my_example(a7, dfa([fp(1,a,1),fp(1,b,2),fp(2,a,2),fp(2,b,1),
 fp(3,b,3),fp(3,a,3)], 1, [3])).
 % bad ones
-example(b1, dfa([fp(1,a,1),fp(1,a,1)], 1, [])).
-example(b2, dfa([fp(1,a,1),fp(1,a,2)], 1, [])).
-example(b3, dfa([fp(1,a,2)], 1, [])).
-example(b4, dfa([fp(1,a,1)], 2, [])).
-example(b4, dfa([fp(1,a,1)], 1, [1,2])).
-example(b5, dfa([], [], [])).
+my_example(b1, dfa([fp(1,a,1),fp(1,a,1)], 1, [])).
+my_example(b2, dfa([fp(1,a,1),fp(1,a,2)], 1, [])).
+my_example(b3, dfa([fp(1,a,2)], 1, [])).
+my_example(b4, dfa([fp(1,a,1)], 2, [])).
+my_example(b4, dfa([fp(1,a,1)], 1, [1,2])).
+my_example(b5, dfa([], [], [])).
 
-testCorrect(X, Z) :- example(X, Y), correct(Y, Z).
+testCorrect(X, Z) :- my_example(X, Y), correct(Y, Z).
 testBadCorrect() :- 
     member(X, [b1, b2, b3, b4, b5]),
     testCorrect(X, _),
@@ -417,13 +474,13 @@ testAllCorrect() :- \+ testBadCorrect(),
 
 testNotEmpty1() :-
     member(X, [b1, b2, b3, b4, b5, a11, a12, a2, a3, a4, a5]),
-    example(X, XAUT),
+    my_example(X, XAUT),
     empty(XAUT),
     debug(X).
 
 testNotEmpty2() :-
     member(Y, [a6, a7]),
-    example(Y, YAUT),
+    my_example(Y, YAUT),
     \+ empty(YAUT).
 
 testEmpty() :-
@@ -431,7 +488,7 @@ testEmpty() :-
     \+ testNotEmpty2().
 
 testAccept(X, Z) :- 
-    example(X, Y), 
+    my_example(X, Y), 
     accept(Y, Z).
 
 testAllInfinite() :-
@@ -445,6 +502,6 @@ testNegativeInfinite() :-
     testInfinite(X).
 
 testInfinite(X) :-
-    example(X, Y),
+    my_example(X, Y),
     correct(Y, R),
     isInfinite(R).
