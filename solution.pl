@@ -167,7 +167,7 @@ bstToList(wezel(L, W, R), A, K) :-
   bstToList(L, [W | K1], K).
 
 listToBST(L, D) :-
-    listToBST(L, [], D).
+    listToBST(L, puste, D).
 listToBST([], D, D).
 listToBST([X | L], D0, D) :-
     insertBST(D0, X, D1),
@@ -205,8 +205,10 @@ checkIfAllStatesExist([S | States], D) :-
     existsMap(D, S),
     checkIfAllStatesExist(States, D).
 
-debug(X) :-
-    write(X), write("\n").
+% debug(X) :-
+%     write(X), write("\n").
+
+debug(_).
 
 % removeAllDeadTrans(+TransMap, +DeadStates, ?TransMapAfter)
 removeAllDeadTrans(puste, _, puste).
@@ -230,7 +232,7 @@ removeDeadTrans([trans(A, State) | T0], D, [trans(A, State) | T]) :-
     removeDeadTrans(T0, D, T).
 
 % TODO czy musimy sprawdzać, że nie ma duplikatów w F.
-correct(dfa(TransList, Init, FinalList), aut(Alphabet, TransMapOriginal, TransMap, Init, FinalSet, NRealStates, inf)) :- 
+correct(dfa(TransList, Init, FinalList), aut(Alphabet, TransMapOriginal, TransMap, Init, FinalSet, NRealStates, Infinity)) :- 
     alphabet(TransList, Alphabet, LA),
     Alphabet \= puste,
     
@@ -246,29 +248,26 @@ correct(dfa(TransList, Init, FinalList), aut(Alphabet, TransMapOriginal, TransMa
     createBST(FinalList, FinalSet),
     
     insertAllTransitions(TransList, puste, TransMap0, TransMapOriginal),
-    % infinityCheck(aut(Alphabet, TransMap, Init, FinalSet, NStates, _), Infinity),
     
     bstToList(TransMap0, StateEntries),
     findAllDeadStates(StateEntries, FinalSet, TransMapOriginal, puste, DeadStates),
-    % debug("DeadStates"),
-    % debug(DeadStates), 
+    
+    % Create TransMap without DeadStates.
     createTransMap(TransList, DeadStates, TransMap2, NRealStates),
-    % debug("TransMap"), 
-    % debug(TransMap2),
+    
+
+    % Insert transitions to normal states.
     insertAllTransitions(TransList, DeadStates, TransMap2, TransMap),
-    % debug(DeadStates),
+    
+    infinityCheck(Init, TransMap, Infinity),
     !. % Representation is unequivocal, there is no need to search any further. 
 
+infinityCheck(I, T, inf) :- cycle(I, T), !.
+infinityCheck(I, T, notInf) :- \+ cycle(I, T). 
 
-isInfinite(aut(_, T, I, F, N, _)) :-
-    UpperBound is N + N,
-    between(N, UpperBound, WordLength),
-    length(Word, WordLength),
-    traverseDFS(Word, T, F, I),
-    !. % Important, we want only one success here.
 
-infinityCheck(A, inf) :- isInfinite(A), !.
-infinityCheck(A, notInf) :- \+ isInfinite(A). 
+infinityCheck(A, inf) :- cycleAut(A), !.
+infinityCheck(A, notInf) :- \+ cycleAut(A). 
 
 accept(Aut, X) :- 
     correct(Aut, Rep), 
@@ -318,7 +317,7 @@ visitDeadStates([CurrState | Stack], F, T, D0, D) :-
     % write(CurrState), write(": sucessfully added states "), write(Stack), write("\n"),
     visitDeadStates(StackAfter, F, T, D2, D).
 
-cycleAut(aut(_, T, I, _, _, _)) :- cycle(I, T).
+cycleAut(aut(_, _, T, I, _, _, _)) :- cycle(I, T).
 
 cycle(I, T) :-
     cycle(I, puste, T). 
@@ -343,17 +342,23 @@ empty(A) :- correct(A, aut(_, _, T, I, F, _, _)),
 
 emptyDFSstack([CurrState | _], _, F, _) :-
     existsBST(F, CurrState).
+
 emptyDFSstack([CurrState | Stack0], T, F, V0) :-
+    debug(("CurrState", CurrState, "Stack0 ", Stack0)),
     getMap(T, CurrState, TransList),
+    debug(("TransList", TransList)),     
     addNextStates(TransList, Stack0, Stack1, V0, V1),
+    debug(("Stack1", Stack1)),
     emptyDFSstack(Stack1, T, F, V1).
 
 % addNextStates(+TranList, +StackBefore, ?StackAfter, +VisitedBefore, ?VisitedAfter)
 addNextStates([], S, S, V, V).
 addNextStates([trans(_, NextState) | TL], S0, S, V0, V) :-
+    debug(("V0", V0, "NextState", NextState)),
     \+ existsBST(V0, NextState),
     !, % if then else
     insertBST(V0, NextState, V1),
+    debug(("V1", V1)),
     addNextStates(TL, [NextState | S0], S, V1, V).    
 addNextStates([trans(_, NextState) | TL], S0, S, V0, V) :-
     existsBST(V0, NextState),
@@ -363,14 +368,14 @@ addNextStates([trans(_, NextState) | TL], S0, S, V0, V) :-
 cartProduct(X, Y, L) :- cartProductHelp(X, Y, L-[]).
 cartProductHelp([], _, L-L).
 cartProductHelp([E | L1], L2, AFTER2-BEFORE) :-
-    cartHandleHelp(E, L2, AFTER1-BEFORE),
+    cartHandleHelp(L2, E, AFTER1-BEFORE),
     cartProductHelp(L1, L2, AFTER2-AFTER1).
 
 cartHandleHelp([], _, L-L).
 cartHandleHelp([H | T], X, [prod(X, H)| R]-L) :- 
     cartHandleHelp(T, X, R-L).
 
-prodStateTrans([], _, _, _). 
+prodStateTrans([], _, _, []). 
 prodStateTrans([X | A], T1, T2, [trans(X, prod(Y1, Y2)) | TPROD]) :-
     member(trans(X, Y1), T1),
     member(trans(X, Y2), T2),
@@ -381,6 +386,7 @@ addAllProductTrans(A, [prod(S1, S2) | SPROD], D1, D2, D0, DPROD) :-
    getMap(D1, S1, T1),
    getMap(D2, S2, T2),
    prodStateTrans(A, T1, T2, TPROD),
+   debug(TPROD),
    setMap(prod(S1, S2), TPROD, D0, DPROD1),
    addAllProductTrans(A, SPROD, D1, D2, DPROD1, DPROD).
 
@@ -397,13 +403,19 @@ capEmpty(A, (T1, I1, F1), (T2, I2, F2)) :-
     bstToList(A, AL),
     keysListFromMap(T1, S1),
     keysListFromMap(T2, S2),
-    debug((S1, S2)),
+    bstToList(F1, FL1),
+    bstToList(F2, FL2),
     cartProduct(S1, S2, SPROD),
-    debug(("Sprod: ", SPROD)), 
-    cartProduct(F1, F2, FPROD),
+    debug(("SPROD", SPROD)),
+    cartProduct(FL1, FL2, FLPROD),
+    debug(("FLPROD", FLPROD)),
     createBSTMap(SPROD,  [], TPROD0),
+    debug(("TPROD0", TPROD0)), 
     addAllProductTrans(AL, SPROD, T1, T2, TPROD0, TPROD),
-    \+ emptyDFSstack([prod(I1, I2)], TPROD, FPROD, tree(puste, prod(I1, I2), puste)). 
+    listToBST(FLPROD, FPROD),
+    debug(("FPROD", FPROD)),
+    debug(("TPROD ", TPROD)),
+    \+ emptyDFSstack([prod(I1, I2)], TPROD, FPROD, wezel(puste, prod(I1, I2), puste)). 
 
 % complement(+L, +F, -FComplement)
 % Creates set of elements from L that are not present in F.
@@ -421,12 +433,12 @@ complement([X | L], F, FC0, FC) :-
 subsetEq(A1, A2) :-
     correct(A1, aut(Alph1, TO1, _, I1, F1, _, _)),
     correct(A2, aut(Alph2, TO2, _, I2, F2, _, _)),
-    debug("elo"),
     bstToList(Alph1, AL),
     bstToList(Alph2, AL),
     keysListFromMap(TO2, S2),
     complement(S2, F2, FC2),
-    capEmpty(Alph1, (TO1, F1, I1), (TO2, FC2, I2)).    
+    debug(("FC2 = ", FC2)), 
+    capEmpty(Alph1, (TO1, I1, F1), (TO2, I2, FC2)).    
 % https://www.geeksforgeeks.org/sorted-linked-list-to-balanced-bst/
 
 
@@ -496,12 +508,38 @@ testAllInfinite() :-
     \+ testNegativeInfinite().
 testPositiveInfinite() :-
    member(X, [a11, a12, a2, a3, a4, a5]),
-   \+ testInfinite(X).
+   \+ testInfinite(X),
+   debug(X).
 testNegativeInfinite() :-
     member(X, [k1, k2]),
-    testInfinite(X).
-
+    testInfinite(X),
+    debug(X).
 testInfinite(X) :-
     my_example(X, Y),
     correct(Y, R),
-    isInfinite(R).
+    cycleAut(R).
+
+testSubset(X, Y) :-
+    my_example(X, XR),
+    my_example(Y, YR),
+    debug(XR),
+    debug(YR),
+    subsetEq(XR, YR).
+testPositiveSubset() :-
+    member((X, Y), [(a5, a3)]),
+    \+ testSubset(X, Y),
+    debug((X, Y)).
+testTrivialPositiveSubset() :-
+    member(X, [a11, a12, a2, a6, a7]),
+    member(Y, [a11, a12]),
+    \+ testSubset(X, Y),
+    debug((X, Y)).
+testNegativeSubset() :-
+    member((X, Y), [(a4, a3), (a3, a5), (a4, a5), (a3, a4)]),
+    testSubset(X, Y),
+    debug((X, Y)).
+testAllSubset() :-
+    \+ testPositiveSubset(),
+    \+ testTrivialPositiveSubset(),
+    \+ testNegativeSubset().
+
