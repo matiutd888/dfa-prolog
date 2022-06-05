@@ -112,21 +112,21 @@ insertBST(wezel(L, W, P), X, wezel(L, W, P1)) :-
   insertBST(P, X, P1).
 
 % getMap(+MAP, +KEY, -VALUE).
-getMap(wezel(_, entry(K, V), _), K, V).
+getMap(wezel(_, entry(K, V), _), K, V) :- !.
 getMap(wezel(L, entry(K2, _), _), K, V) :-
     K @< K2,
     % ODCIECIE HERE
-    % !,
+    !,
     getMap(L, K, V).
 getMap(wezel(_, entry(K2, _), R), K, V) :-
     K @>  K2,
     getMap(R, K, V).
 
-setMap(K, V, wezel(L, entry(K, _), R), wezel(L, entry(K, V), R)).
+setMap(K, V, wezel(L, entry(K, _), R), wezel(L, entry(K, V), R)) :- !.
 setMap(K, V, wezel(L, entry(K2, V2), R), wezel(L2, entry(K2, V2), R)) :-
     K @< K2,
     % ODCIECIE HERE
-    % !,
+    !,
     setMap(K, V, L, L2).
 setMap(K, V, wezel(L, entry(K2, V2), R), wezel(L, entry(K2, V2), R2)) :-
     K @> K2,
@@ -148,16 +148,15 @@ createBST([E | Elements], T0, T) :-
     createBST(Elements, T1, T).
 
 % existsBST(+BST, +Value).
-existsBST(wezel(_, V, _), V).
+existsBST(wezel(_, V, _), V) :- !.
 existsBST(wezel(L, V1, _), V) :-
     V @< V1,
     % ODCIECIE HERE
-    % !,
+    !,
     existsBST(L, V).
 existsBST(wezel(_, V1, R), V) :-
     V @> V1,
     % ODCIECIE HERE
-    % !,
     existsBST(R, V).
 
 bstToList(T, L) :- bstToList(T, [], L).
@@ -183,7 +182,7 @@ insertAllTransitions([], _, Map, Map).
 insertAllTransitions([fp(State, X, DestState) | TransLeft], D, Map0, Map) :-
     \+ existsBST(D, DestState),
     \+ existsBST(D, State),
-    % !, % Czerwone odcięcie
+    !, % Czerwone odcięcie
     getMap(Map0, State, StateTransitions),
     % TODO to trzeba inaczej
     \+ member(trans(X, _), StateTransitions),
@@ -211,25 +210,25 @@ checkIfAllStatesExist([S | States], D) :-
 debug(_).
 
 % removeAllDeadTrans(+TransMap, +DeadStates, ?TransMapAfter)
-removeAllDeadTrans(puste, _, puste).
-removeAllDeadTrans(wezel(L0, entry(S, _), R0), D, wezel(L, entry(S, []), R)) :-
-    existsBST(D, S),
-    !,
-    removeAllDeadTrans(L0, D, L),
-    removeAllDeadTrans(R0, D, R).
-removeAllDeadTrans(wezel(L0, entry(S, T0), R0), D, wezel(L, entry(S, T), R)) :-
-    removeDeadTrans(T0, D, T),
-    removeAllDeadTrans(L0, D, L),
-    removeAllDeadTrans(R0, D, R).
+% removeAllDeadTrans(puste, _, puste).
+% removeAllDeadTrans(wezel(L0, entry(S, _), R0), D, wezel(L, entry(S, []), R)) :-
+%     existsBST(D, S),
+%     !,
+%     removeAllDeadTrans(L0, D, L),
+%     removeAllDeadTrans(R0, D, R).
+% removeAllDeadTrans(wezel(L0, entry(S, T0), R0), D, wezel(L, entry(S, T), R)) :-
+%     removeDeadTrans(T0, D, T),
+%     removeAllDeadTrans(L0, D, L),
+%     removeAllDeadTrans(R0, D, R).
 
 % removeDeadTrans(+TransList, DeadStates, ?TransListAfter) :-
-removeDeadTrans([], _, []).
-removeDeadTrans([trans(_, DeadState) | T0], D, T) :-
-    existsBST(D, DeadState),
-    !, % if then else
-    removeDeadTrans(T0, D, T).
-removeDeadTrans([trans(A, State) | T0], D, [trans(A, State) | T]) :-
-    removeDeadTrans(T0, D, T).
+% removeDeadTrans([], _, []).
+% removeDeadTrans([trans(_, DeadState) | T0], D, T) :-
+%     existsBST(D, DeadState),
+%     !, % if then else
+%     removeDeadTrans(T0, D, T).
+% removeDeadTrans([trans(A, State) | T0], D, [trans(A, State) | T]) :-
+%     removeDeadTrans(T0, D, T).
 
 % TODO czy musimy sprawdzać, że nie ma duplikatów w F.
 correct(dfa(TransList, Init, FinalList), aut(Alphabet, TransMapOriginal, TransMap, Init, FinalSet, NRealStates, Infinity)) :- 
@@ -259,8 +258,7 @@ correct(dfa(TransList, Init, FinalList), aut(Alphabet, TransMapOriginal, TransMa
     % Insert transitions to normal states.
     insertAllTransitions(TransList, DeadStates, TransMap2, TransMap),
     
-    infinityCheck(Init, TransMap, Infinity),
-    !. % Representation is unequivocal, there is no need to search any further. 
+    infinityCheck(Init, TransMap, Infinity). % Representation is unequivocal, there is no need to search any further. 
 
 infinityCheck(I, T, inf) :- cycle(I, T), !.
 infinityCheck(I, T, notInf) :- \+ cycle(I, T). 
@@ -435,10 +433,23 @@ subsetEq(A1, A2) :-
     correct(A2, aut(Alph2, TO2, _, I2, F2, _, _)),
     bstToList(Alph1, AL),
     bstToList(Alph2, AL),
+    subsetEq(Alph1, (TO1, I1, F1), (TO2, I2, F2)). 
+
+subsetEq(A, (TO1, I1, F1), (TO2, I2, F2)) :-
     keysListFromMap(TO2, S2),
     complement(S2, F2, FC2),
     debug(("FC2 = ", FC2)), 
-    capEmpty(Alph1, (TO1, I1, F1), (TO2, I2, FC2)).    
+    capEmpty(A, (TO1, I1, F1), (TO2, I2, FC2)).    
+
+equal(A1, A2) :-
+    correct(A1, aut(Alph1, TO1, _, I1, F1, _, _)),
+    correct(A2, aut(Alph2, TO2, _, I2, F2, _, _)),
+    bstToList(Alph1, AL),
+    bstToList(Alph2, AL),
+    subsetEq(Alph1, (TO2, I2, F2), (TO1, I1, F1)),
+    subsetEq(Alph1, (TO1, I1, F1), (TO2, I2, F2)). 
+    
+
 % https://www.geeksforgeeks.org/sorted-linked-list-to-balanced-bst/
 
 
