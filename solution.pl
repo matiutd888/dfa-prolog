@@ -190,6 +190,7 @@ insertAllTransitions([fp(State, X, DestState) | TransLeft], D, Map0, Map) :-
     insertAllTransitions(TransLeft, D, Map1, Map).
 insertAllTransitions([fp(_, _, DestState) | TransLeft], D, Map0, Map) :-
     existsBST(D, DestState),
+    !,
     insertAllTransitions(TransLeft, D, Map0, Map).
 insertAllTransitions([fp(State, _, _) | TransLeft], D, Map0, Map) :-
     existsBST(D, State),
@@ -204,10 +205,10 @@ checkIfAllStatesExist([S | States], D) :-
     existsMap(D, S),
     checkIfAllStatesExist(States, D).
 
-% debug(X) :-
-%     write(X), write("\n").
+debug(X) :-
+    write(X), write("\n").
 
-debug(_).
+%debug(_).
 
 % removeAllDeadTrans(+TransMap, +DeadStates, ?TransMapAfter)
 % removeAllDeadTrans(puste, _, puste).
@@ -336,27 +337,29 @@ addNoVisitedCheck([trans(_, NextState) | TL], S0, S) :-
     addNoVisitedCheck(TL, [NextState | S0], S).    
 
 empty(A) :- correct(A, aut(_, _, T, I, F, _, _)),
-    \+ emptyDFSstack([I], T, F, tree(puste, I, puste)).
+% debug("-----------"),
+% debug(T),
+    \+ emptyDFSstack([I], T, F, wezel(puste, I, puste)).
 
 emptyDFSstack([CurrState | _], _, F, _) :-
     existsBST(F, CurrState).
 
 emptyDFSstack([CurrState | Stack0], T, F, V0) :-
-    debug(("CurrState", CurrState, "Stack0 ", Stack0)),
+    % debug(("CurrState", CurrState, "Stack0 ", Stack0)),
     getMap(T, CurrState, TransList),
-    debug(("TransList", TransList)),     
+    % debug(("TransList", TransList)),     
     addNextStates(TransList, Stack0, Stack1, V0, V1),
-    debug(("Stack1", Stack1)),
+    % debug(("Stack1", Stack1)),
     emptyDFSstack(Stack1, T, F, V1).
 
 % addNextStates(+TranList, +StackBefore, ?StackAfter, +VisitedBefore, ?VisitedAfter)
 addNextStates([], S, S, V, V).
 addNextStates([trans(_, NextState) | TL], S0, S, V0, V) :-
-    debug(("V0", V0, "NextState", NextState)),
+    % debug(("V0", V0, "NextState", NextState)),
     \+ existsBST(V0, NextState),
     !, % if then else
     insertBST(V0, NextState, V1),
-    debug(("V1", V1)),
+    % debug(("V1", V1)),
     addNextStates(TL, [NextState | S0], S, V1, V).    
 addNextStates([trans(_, NextState) | TL], S0, S, V0, V) :-
     existsBST(V0, NextState),
@@ -377,16 +380,17 @@ prodStateTrans([], _, _, []).
 prodStateTrans([X | A], T1, T2, [trans(X, prod(Y1, Y2)) | TPROD]) :-
     member(trans(X, Y1), T1),
     member(trans(X, Y2), T2),
+    !,
     prodStateTrans(A, T1, T2, TPROD).
 
-addAllProductTrans(_, [], _, _, D, D).
-addAllProductTrans(A, [prod(S1, S2) | SPROD], D1, D2, D0, DPROD) :-
+addAllProductTrans([], _, _, _, D, D).
+addAllProductTrans([prod(S1, S2) | SPROD], A, D1, D2, D0, DPROD) :-
    getMap(D1, S1, T1),
    getMap(D2, S2, T2),
    prodStateTrans(A, T1, T2, TPROD),
-   debug(TPROD),
+   % debug(TPROD),
    setMap(prod(S1, S2), TPROD, D0, DPROD1),
-   addAllProductTrans(A, SPROD, D1, D2, DPROD1, DPROD).
+   addAllProductTrans(SPROD, A, D1, D2, DPROD1, DPROD).
 
 keysListFromMap(T, KL) :-
     bstToList(T, TL),
@@ -404,15 +408,15 @@ capEmpty(A, (T1, I1, F1), (T2, I2, F2)) :-
     bstToList(F1, FL1),
     bstToList(F2, FL2),
     cartProduct(S1, S2, SPROD),
-    debug(("SPROD", SPROD)),
+    % debug(("SPROD", SPROD)),
     cartProduct(FL1, FL2, FLPROD),
-    debug(("FLPROD", FLPROD)),
+    % debug(("FLPROD", FLPROD)),
     createBSTMap(SPROD,  [], TPROD0),
-    debug(("TPROD0", TPROD0)), 
-    addAllProductTrans(AL, SPROD, T1, T2, TPROD0, TPROD),
+    % debug(("TPROD0", TPROD0)), 
+    addAllProductTrans(SPROD, AL, T1, T2, TPROD0, TPROD),
     listToBST(FLPROD, FPROD),
-    debug(("FPROD", FPROD)),
-    debug(("TPROD ", TPROD)),
+    % debug(("FPROD", FPROD)),
+    % debug(("TPROD ", TPROD)),
     \+ emptyDFSstack([prod(I1, I2)], TPROD, FPROD, wezel(puste, prod(I1, I2), puste)). 
 
 % complement(+L, +F, -FComplement)
@@ -438,7 +442,7 @@ subsetEq(A1, A2) :-
 subsetEq(A, (TO1, I1, F1), (TO2, I2, F2)) :-
     keysListFromMap(TO2, S2),
     complement(S2, F2, FC2),
-    debug(("FC2 = ", FC2)), 
+    % debug(("FC2 = ", FC2)), 
     capEmpty(A, (TO1, I1, F1), (TO2, I2, FC2)).    
 
 equal(A1, A2) :-
@@ -483,74 +487,74 @@ my_example(b4, dfa([fp(1,a,1)], 2, [])).
 my_example(b4, dfa([fp(1,a,1)], 1, [1,2])).
 my_example(b5, dfa([], [], [])).
 
-testCorrect(X, Z) :- my_example(X, Y), correct(Y, Z).
-testBadCorrect() :- 
+mTCorrect(X, Z) :- my_example(X, Y), correct(Y, Z).
+mTBadCorrect() :- 
     member(X, [b1, b2, b3, b4, b5]),
-    testCorrect(X, _),
+    mTCorrect(X, _),
     debug(X).
-testGoodCorrect() :-
+mTGoodCorrect() :-
     member(X, [a11, a12, a2, a3, a4, a5, a6, a7]),
-    \+ testCorrect(X, _),
+    \+ mTCorrect(X, _),
     debug(X).
-testAllCorrect() :- \+ testBadCorrect(),
-    \+ testGoodCorrect().
+mTAllCorrect() :- \+ mTBadCorrect(),
+    \+ mTGoodCorrect().
 
-testNotEmpty1() :-
+mTNotEmpty1() :-
     member(X, [b1, b2, b3, b4, b5, a11, a12, a2, a3, a4, a5]),
     my_example(X, XAUT),
     empty(XAUT),
     debug(X).
 
-testNotEmpty2() :-
+mTNotEmpty2() :-
     member(Y, [a6, a7]),
     my_example(Y, YAUT),
     \+ empty(YAUT).
 
-testEmpty() :-
-    \+ testNotEmpty1(),
-    \+ testNotEmpty2().
+mTEmpty() :-
+    \+ mTNotEmpty1(),
+    \+ mTNotEmpty2().
 
-testAccept(X, Z) :- 
+mTAccept(X, Z) :- 
     my_example(X, Y), 
     accept(Y, Z).
 
-testAllInfinite() :-
-    \+ testPositiveInfinite(),
-    \+ testNegativeInfinite().
-testPositiveInfinite() :-
+mTAllInfinite() :-
+    \+ mTPositiveInfinite(),
+    \+ mTNegativeInfinite().
+mTPositiveInfinite() :-
    member(X, [a11, a12, a2, a3, a4, a5]),
-   \+ testInfinite(X),
+   \+ mTInfinite(X),
    debug(X).
-testNegativeInfinite() :-
+mTNegativeInfinite() :-
     member(X, [k1, k2]),
-    testInfinite(X),
+    mTInfinite(X),
     debug(X).
-testInfinite(X) :-
+mTInfinite(X) :-
     my_example(X, Y),
     correct(Y, R),
     cycleAut(R).
 
-testSubset(X, Y) :-
+mTSubset(X, Y) :-
     my_example(X, XR),
     my_example(Y, YR),
     debug(XR),
     debug(YR),
     subsetEq(XR, YR).
-testPositiveSubset() :-
+mTPositiveSubset() :-
     member((X, Y), [(a5, a3)]),
-    \+ testSubset(X, Y),
+    \+ mTSubset(X, Y),
     debug((X, Y)).
-testTrivialPositiveSubset() :-
+mTTrivialPositiveSubset() :-
     member(X, [a11, a12, a2, a6, a7]),
     member(Y, [a11, a12]),
-    \+ testSubset(X, Y),
+    \+ mTSubset(X, Y),
     debug((X, Y)).
-testNegativeSubset() :-
+mTNegativeSubset() :-
     member((X, Y), [(a4, a3), (a3, a5), (a4, a5), (a3, a4)]),
-    testSubset(X, Y),
+    mTSubset(X, Y),
     debug((X, Y)).
-testAllSubset() :-
-    \+ testPositiveSubset(),
-    \+ testTrivialPositiveSubset(),
-    \+ testNegativeSubset().
+mTAllSubset() :-
+    \+ mTPositiveSubset(),
+    \+ mTTrivialPositiveSubset(),
+    \+ mTNegativeSubset().
 
