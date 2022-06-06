@@ -48,7 +48,7 @@ def generate_prolog_file(test_file_name, blocks):
         f.write(':- consult(\'../tests/automata\').\n')
         f.write(':- consult(\'../solution\').\n')
         f.write(':- consult(\'../tests/' + test_file_name + '\').\n')
-        result_count = 100
+        result_count = 250
         timeout = 100
         for blk in blocks:
             if blk['t'] == 'timeout':

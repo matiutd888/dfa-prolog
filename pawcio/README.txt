@@ -10,6 +10,8 @@ How to run the tests:
 - Note that you can NOT edit tests/automata.pl too easily since it's regenerated every time you use run_tests.py. You
   can comment out the create_automata_file() invocation if you are not fond of this behavior.
 
+Please ensure no example(_, _) definitions are put in solution.pl.
+
 How to make your own tests:
 - Create a new text file in automata/ for yourself, eg. automata/miko.txt.
   * Define any required automata in this file, see the syntax section below. Also check out example.txt.
@@ -63,7 +65,7 @@ and when it encounters one of these comments it evaluates it. When it encounters
 predicate it notes it down, and also waits for the predicate to be evaluated by the Prolog interpreter. Afterwards the
 execution results are saved, parsed and available in the Python blocks under the result variable. Please note that any
 errors in the Python execution will make the last interpreted test fail.
-Only the first 1000000 results are available in Python and the interpreter is set to time out after 100ms by default.
+Only the first 250 results are available in Python and the interpreter is set to time out after 100ms by default.
 
 In addition, the following snippets can be used:
 

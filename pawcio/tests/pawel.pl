@@ -50,6 +50,7 @@ test_loop_in_another_branch_1a_accept(R) :- pawel(loop_in_another_branch_1a, A),
 test_loop_in_another_branch_1b_accept(R) :- pawel(loop_in_another_branch_1b, A), accept(A, [b | R]).
 %py assert compare_word_sets(result, [[]])
 
+%timeout 1000
 % test_loop_in_another_branch_2a_accept(R) :- pawel(loop_in_another_branch_2a, A), accept(A, [_ | [a | R]]).
 % %py assert compare_word_sets(result, [[]])
 test_loop_in_another_branch_2a_accept2(R) :- pawel(loop_in_another_branch_2a, A), accept(A, R).
