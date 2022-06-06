@@ -146,9 +146,6 @@ allStatesExist([S | States], D) :-
     existsMap(D, S),
     allStatesExist(States, D).
 
-debug(X) :-
-    write(X), write("\n").
-
 correct(dfa(TransList, Init, FinalList), 
     aut(Alphabet, 
         TransMapOriginal, 
@@ -159,6 +156,7 @@ correct(dfa(TransList, Init, FinalList),
         Infinity)) :- 
     % Check if term is grounded.
     ground(dfs(TransList, Init, FinalList)),
+    
     alphabet(TransList, Alphabet, LA),
     % Alphabet cannot be empty.
     Alphabet \= puste,
@@ -292,7 +290,7 @@ cycle(no, CurrState, V, T) :-
     getMap(T, CurrState, TransList),
     member(trans(_, NextState), TransList),
     cycle(NextState, V1, T),
-    !. % A cut to prevent searching for cycle if we already found one.
+    !. % A (red) cut to prevent searching for cycle if we already found one.
 
 empty(A) :- 
     correct(A, aut(_, _, T, I, F, _, _)),
@@ -334,7 +332,7 @@ prodStateTrans([], _, _, []).
 prodStateTrans([X | A], T1, T2, [trans(X, prod(Y1, Y2)) | TPROD]) :-
     member(trans(X, Y1), T1),
     member(trans(X, Y2), T2),
-    !, % Cut because there can be only one 
+    !, % Green cut - there can be only one 
        % members of T1 and T2 with X as first tuple element.
     prodStateTrans(A, T1, T2, TPROD).
 
@@ -414,105 +412,3 @@ equal(A1, A2) :-
     subsetEq(Alph1, (TO2, I2, F2), (TO1, I1, F1)),
     subsetEq(Alph1, (TO1, I1, F1), (TO2, I2, F2)). 
     
-% https://www.geeksforgeeks.org/sorted-linked-list-to-balanced-bst/
-% Krzysztof Jankowski
-% Oczekiwany
-% a
-% a, a
-% b
-% b, a
-% b, b
-% b, b, a
-my_example(k1, dfa([fp(1,a,3), fp(1, b, 2), fp(2, b, 3), fp(2, a, 4), fp(3, a, 4), fp(3, b, 5), fp(4, a, 5), fp(4, b, 5), fp(5, a, 5), fp(5, b, 5)], 1, [2,3,4])).
-my_example(k2, dfa([fp(1,a,3), fp(1, b, 2), fp(2, b, 3), fp(2, a, 4), fp(3, a, 4), fp(3, b, 5), fp(4, a, 5), fp(4, b, 5), fp(5, a, 6), fp(5, b, 6), fp(6, a, 7), fp(6, b, 7), fp(7, a, 5), fp(7, b, 5)], 1, [2,3,4])).
-
-
-my_example(a11, dfa([fp(1,a,1),fp(1,b,2),fp(2,a,2),fp(2,b,1)], 1, [2,1])).
-my_example(a12, dfa([fp(x,a,y),fp(x,b,x),fp(y,a,x),fp(y,b,x)], x, [x,y])).
-my_example(a2, dfa([fp(1,a,2),fp(2,b,1),fp(1,b,3),fp(2,a,3),
-fp(3,b,3),fp(3,a,3)], 1, [1])).
-my_example(a3, dfa([fp(0,a,1),fp(1,a,0)], 0, [0])).
-my_example(a4, dfa([fp(x,a,y),fp(y,a,z),fp(z,a,x)], x, [x])).
-my_example(a5, dfa([fp(x,a,y),fp(y,a,z),fp(z,a,zz),fp(zz,a,x)], x, [x])).
-my_example(a6, dfa([fp(1,a,1),fp(1,b,2),fp(2,a,2),fp(2,b,1)], 1, [])).
-my_example(a7, dfa([fp(1,a,1),fp(1,b,2),fp(2,a,2),fp(2,b,1),
-fp(3,b,3),fp(3,a,3)], 1, [3])).
-% bad ones
-my_example(b1, dfa([fp(1,a,1),fp(1,a,1)], 1, [])).
-my_example(b2, dfa([fp(1,a,1),fp(1,a,2)], 1, [])).
-my_example(b3, dfa([fp(1,a,2)], 1, [])).
-my_example(b4, dfa([fp(1,a,1)], 2, [])).
-my_example(b4, dfa([fp(1,a,1)], 1, [1,2])).
-my_example(b5, dfa([], [], [])).
-
-mTCorrect(X, Z) :- my_example(X, Y), correct(Y, Z).
-mTBadCorrect() :- 
-    member(X, [b1, b2, b3, b4, b5]),
-    mTCorrect(X, _),
-    debug(X).
-mTGoodCorrect() :-
-    member(X, [a11, a12, a2, a3, a4, a5, a6, a7]),
-    \+ mTCorrect(X, _),
-    debug(X).
-mTAllCorrect() :- \+ mTBadCorrect(),
-    \+ mTGoodCorrect().
-
-mTNotEmpty1() :-
-    member(X, [b1, b2, b3, b4, b5, a11, a12, a2, a3, a4, a5]),
-    my_example(X, XAUT),
-    empty(XAUT),
-    debug(X).
-
-mTNotEmpty2() :-
-    member(Y, [a6, a7]),
-    my_example(Y, YAUT),
-    \+ empty(YAUT).
-
-mTEmpty() :-
-    \+ mTNotEmpty1(),
-    \+ mTNotEmpty2().
-
-mTAccept(X, Z) :- 
-    my_example(X, Y), 
-    accept(Y, Z).
-
-mTAllInfinite() :-
-    \+ mTPositiveInfinite(),
-    \+ mTNegativeInfinite().
-mTPositiveInfinite() :-
-   member(X, [a11, a12, a2, a3, a4, a5]),
-   \+ mTInfinite(X),
-   debug(X).
-mTNegativeInfinite() :-
-    member(X, [k1, k2]),
-    mTInfinite(X),
-    debug(X).
-mTInfinite(X) :-
-    my_example(X, Y),
-    correct(Y, R),
-    cycleAut(R).
-
-mTSubset(X, Y) :-
-    my_example(X, XR),
-    my_example(Y, YR),
-    debug(XR),
-    debug(YR),
-    subsetEq(XR, YR).
-mTPositiveSubset() :-
-    member((X, Y), [(a5, a3)]),
-    \+ mTSubset(X, Y),
-    debug((X, Y)).
-mTTrivialPositiveSubset() :-
-    member(X, [a11, a12, a2, a6, a7]),
-    member(Y, [a11, a12]),
-    \+ mTSubset(X, Y),
-    debug((X, Y)).
-mTNegativeSubset() :-
-    member((X, Y), [(a4, a3), (a3, a5), (a4, a5), (a3, a4)]),
-    mTSubset(X, Y),
-    debug((X, Y)).
-mTAllSubset() :-
-    \+ mTPositiveSubset(),
-    \+ mTTrivialPositiveSubset(),
-    \+ mTNegativeSubset().
-
