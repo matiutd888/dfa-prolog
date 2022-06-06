@@ -219,12 +219,16 @@ infinityCheck(I, T, INF) :-
 accept(Aut, X) :- 
     correct(Aut, Rep), 
     acceptAut(Rep, X).
-acceptAut(aut(_, _, T, I, F, _, inf), X) :- 
-    length(X, _),
-    traverseDFS(X, T, F, I).
-acceptAut(aut(_, _, T, I, F, N, notInf), X) :- 
-    bet(0, N, XLen),
-    length(X, XLen),
+acceptAut(aut(_, _, T, I, F, N, INF), X) :- 
+    (
+        INF = inf ->
+        
+        length(X, _)
+      ;
+        bet(0, N, XLen),
+        length(X, XLen),
+        traverseDFS(X, T, F, I)
+    ),
     traverseDFS(X, T, F, I).
 
 traverseDFS([], _, F, S) :-
@@ -429,4 +433,25 @@ equal(A1, A2) :-
     bstToList(Alph2, AL),
     subsetEq(Alph1, (TO2, I2, F2), (TO1, I1, F1)),
     subsetEq(Alph1, (TO1, I1, F1), (TO2, I2, F2)). 
-    
+
+
+% example(IdentyfikatorAutomatu, Automat)
+example(a11, dfa([fp(1,a,1),fp(1,b,2),fp(2,a,2),fp(2,b,1)], 1, [2,1])).
+example(a12, dfa([fp(x,a,y),fp(x,b,x),fp(y,a,x),fp(y,b,x)], x, [x,y])).
+example(a2, dfa([fp(1,a,2),fp(2,b,1),fp(1,b,3),fp(2,a,3), fp(3,b,3),fp(3,a,3)], 1, [1])).
+example(a3, dfa([fp(0,a,1),fp(1,a,0)], 0, [0])).
+example(a4, dfa([fp(x,a,y),fp(y,a,z),fp(z,a,x)], x, [x])).
+example(a5, dfa([fp(x,a,y),fp(y,a,z),fp(z,a,zz),fp(zz,a,x)], x, [x])).
+
+
+example(a6, dfa([fp(1,a,1),fp(1,b,2),fp(2,a,2),fp(2,b,1)], 1, [])).
+example(a7, dfa([fp(1,a,1),fp(1,b,2),fp(2,a,2),fp(2,b,1), fp(3,b,3),fp(3,a,3)], 1, [3])).
+% bad ones
+example(b1, dfa([fp(1,a,1),fp(1,a,1)], 1, [])).
+example(b2, dfa([fp(1,a,1),fp(1,a,2)], 1, [])).
+example(b3, dfa([fp(1,a,2)], 1, [])).
+example(b4, dfa([fp(1,a,1)], 2, [])).
+example(b4, dfa([fp(1,a,1)], 1, [1,2])).
+example(b5, dfa([], [], [])).
+
+
