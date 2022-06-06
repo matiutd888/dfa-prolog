@@ -1,3 +1,22 @@
+% Mateusz Nowakowski
+% Automata is represented by a 
+% 1. Alphabet, BST containing letters of alphabet
+% 2. Two TransitionMaps 
+% Transition Map is a BST map indexed by states,
+% with lists of transitions that are going out of the state.
+% The first transition map contains all transitions present 
+% in the original list of transitions in the dfa term.
+% The second transition map contains is optimized, containing
+% only states and transitions to states that can reach 
+% a final state.
+% 3. Initial state
+% 4. FinalSet, BST containing final states of the DFA
+% 5. N, number of states that can reach a final state
+% 6. Infinity, information whether language recognized 
+% by automata is infinite
+
+
+
 % https://stackoverflow.com/questions/18337235/can-you-write-between-3-in-pure-prolog
 bet(N, M, K) :- 
     N =< M, K = N.
@@ -34,7 +53,6 @@ createTransMap([fp(State, _, _) | L], D,  S0, S, N0, N) :-
       ;
         createTransMap(L, D, S0, S, N0, N)
    ). 
-
 
 % destinationsCorrect(+Transitions, +TransitionMap)
 % Checks if transition goals are in the TransitionMap. 
