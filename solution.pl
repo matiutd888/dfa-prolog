@@ -19,7 +19,7 @@ alphabet([fp(_, C, _) | L], A0, A, N0, N) :-
     existsBST(A0, C), 
     alphabet(L, A0, A, N0, N).
 
-% createTransMap(+TransitionList, +DeadStates, ?StatesTransitionsMap, ?Len)
+% createTransMap(+TransitionList, +DeadStates, -TransitionsMap, -SizeOfMap)
 createTransMap(T, D, S, N) :- createTransMap(T, D, puste, S, 0, N).
 createTransMap([], _, S, S, N, N).
 createTransMap([fp(State, _, _) | L], D, S0, S, N0, N) :- 
@@ -39,12 +39,12 @@ createTransMap([fp(State, _, _) | L], D,  S0, S, N0, N) :-
     createTransMap(L, D, S1, S, N1, N).
 
 
-% checkDestinations(+tranzycje, +stany) - sprawdza, czy 
-% cele tranzycji są w stanach.
-checkDestinations([], _).
-checkDestinations([fp(_, _, X) | L], D) :- 
-    existsMap(D, X),
-    checkDestinations(L, D).
+% destinationsCorrect(+Transitions, +TransitionMap)
+% Checks if transition goals are in the TransitionMap. 
+destinationsCorrect([], _).
+destinationsCorrect([fp(_, _, X) | L], T) :- 
+    existsMap(T, X),
+    destinationsCorrect(L, T).
 
 insertBST(puste, X, wezel(puste, X, puste)).
 insertBST(wezel(L, W, P), X, wezel(L1, W, P)) :-
@@ -55,7 +55,7 @@ insertBST(wezel(L, W, P), X, wezel(L, W, P1)) :-
   X @> W,
   insertBST(P, X, P1).
 
-% getMap(+MAP, +KEY, -VALUE).
+% getMap(+Map, +Key, -Value).
 getMap(wezel(_, entry(K, V), _), K, V) :- !.
 getMap(wezel(L, entry(K2, _), _), K, V) :-
     K @< K2,
@@ -66,69 +66,61 @@ getMap(wezel(_, entry(K2, _), R), K, V) :-
     K @>  K2,
     getMap(R, K, V).
 
+% setMap(+Key, +Value, +Map, -NewMap)
 setMap(K, V, wezel(L, entry(K, _), R), wezel(L, entry(K, V), R)) :- !.
 setMap(K, V, wezel(L, entry(K2, V2), R), wezel(L2, entry(K2, V2), R)) :-
     K @< K2,
-    % ODCIECIE HERE
     !,
     setMap(K, V, L, L2).
 setMap(K, V, wezel(L, entry(K2, V2), R), wezel(L, entry(K2, V2), R2)) :-
     K @> K2,
     setMap(K, V, R, R2).
 
-% createBSTMap(+KEYS, -newMap, +initial value).
+% createBSTMap(+Keys, +InitialNodeValue, -TreeMap).
 createBSTMap(S, InitVal, M) :-
     createBSTMap(S, InitVal, puste, M).
 createBSTMap([], _, Map, Map).
 createBSTMap([ST | States], InitVal, Acc1, Map) :-
     insertBST(Acc1, entry(ST, InitVal), Acc2),
     createBSTMap(States, InitVal, Acc2, Map).
-% createBST(+Elements, +BST)
-createBST(E, T) :-
-    createBST(E, puste, T).
-createBST([], T, T).
-createBST([E | Elements], T0, T) :-
-    insertBST(T0, E, T1),
-    createBST(Elements, T1, T).
 
 % existsBST(+BST, +Value).
 existsBST(wezel(_, V, _), V) :- !.
 existsBST(wezel(L, V1, _), V) :-
     V @< V1,
-    % ODCIECIE HERE
     !,
     existsBST(L, V).
 existsBST(wezel(_, V1, R), V) :-
     V @> V1,
-    % ODCIECIE HERE
     existsBST(R, V).
 
+% bstToList(+Tree, -List)
 bstToList(T, L) :- bstToList(T, [], L).
 bstToList(puste, A, A).
 bstToList(wezel(L, W, R), A, K) :-
   bstToList(R, A, K1),
   bstToList(L, [W | K1], K).
 
-listToBST(L, D) :-
-    listToBST(L, puste, D).
-listToBST([], D, D).
-listToBST([X | L], D0, D) :-
-    insertBST(D0, X, D1),
-    listToBST(L, D1, D).
+% listToBST(+List, -Tree)
+listToBST(L, T) :-
+    listToBST(L, puste, T).
+listToBST([], T, T).
+listToBST([X | L], T0, T) :-
+    insertBST(T0, X, T1),
+    listToBST(L, T1, T).
 
-% bstSize(T, N) :- bstSize(T, 0, N).
-% bstSize(puste, N, N).
-% bstSize(wezel(L, _, R), N0, N) :-
-%     bstSize(
-
-% insertAllTransitions(+Tranzycje, +DeadStates, +pustaMapa, -mapaPoDodaniu).
+% insertAllTransitions(+TransitionList, +DeadStates, 
+%                      +TransMap (indexed by states), 
+%                      -TransMap after adding all transitions).
+% Function adds all transitions in TransitionList (first argument)
+% to empty TransMap.
+% While doing that, checks whether TransitionList contains duplicates.
 insertAllTransitions([], _, Map, Map). 
 insertAllTransitions([fp(State, X, DestState) | TransLeft], D, Map0, Map) :-
     \+ existsBST(D, DestState),
     \+ existsBST(D, State),
-    !, % Czerwone odcięcie
+    !, 
     getMap(Map0, State, StateTransitions),
-    % TODO to trzeba inaczej
     \+ member(trans(X, _), StateTransitions),
     setMap(State, [trans(X, DestState) | StateTransitions], Map0, Map1),
     insertAllTransitions(TransLeft, D, Map1, Map).
@@ -144,31 +136,44 @@ insertAllTransitions([fp(State, _, _) | TransLeft], D, Map0, Map) :-
 existsMap(Map, State) :-
     getMap(Map, State,  _).
 
-checkIfAllStatesExist([], _).
-checkIfAllStatesExist([S | States], D) :-
+% allStatesExist(+States, +TransMap)
+allStatesExist([], _).
+allStatesExist([S | States], D) :-
     existsMap(D, S),
-    checkIfAllStatesExist(States, D).
+    allStatesExist(States, D).
 
 debug(X) :-
     write(X), write("\n").
 
-%debug(_).
 
 % TODO czy musimy sprawdzać, że nie ma duplikatów w F.
-correct(dfa(TransList, Init, FinalList), aut(Alphabet, TransMapOriginal, TransMap, Init, FinalSet, NRealStates, Infinity)) :- 
+correct(dfa(TransList, Init, FinalList), 
+    aut(Alphabet, 
+        TransMapOriginal, 
+        TransMap, 
+        Init, 
+        FinalSet, 
+        NRealStates, 
+        Infinity)) :- 
     alphabet(TransList, Alphabet, LA),
+    % Alphabet cannot be empty.
     Alphabet \= puste,
-    
+     
     createTransMap(TransList, puste, TransMap0, NStates),
     
-    checkDestinations(TransList, TransMap0),
-    checkIfAllStatesExist(FinalList, TransMap0),
+    % Check if destinations are to correct states.
+    destinationsCorrect(TransList, TransMap0),
+    
+    allStatesExist(FinalList, TransMap0),
     existsMap(TransMap0, Init),
 
+    % If function is not partial and there are no transition duplicates
+    % the length of transition list must be equal to the product of 
+    % the size of alphabet and number of states.
     length(TransList, LT),
     LT is LA * NStates,
   
-    createBST(FinalList, FinalSet),
+    listToBST(FinalList, FinalSet),
     
     insertAllTransitions(TransList, puste, TransMap0, TransMapOriginal),
     
@@ -181,7 +186,7 @@ correct(dfa(TransList, Init, FinalList), aut(Alphabet, TransMapOriginal, TransMa
     % Insert transitions to normal states.
     insertAllTransitions(TransList, DeadStates, TransMap2, TransMap),
     
-    infinityCheck(Init, TransMap, Infinity). % Representation is unequivocal, there is no need to search any further. 
+    infinityCheck(Init, TransMap, Infinity). 
 
 infinityCheck(I, T, inf) :- cycle(I, T), !.
 infinityCheck(I, T, notInf) :- \+ cycle(I, T). 
@@ -208,33 +213,53 @@ traverseDFS([C | Rest], T, F, CurrState):-
     member(trans(C, NextState), TransList),
     traverseDFS(Rest, T, F, NextState).
 
-% findAllDeadStates(+StateEntries, +FinalSet, +TransMap, DeadStatesBefore, DeadStatesAfter).
+% findAllDeadStates(+StateEntries, +FinalSet, 
+%                   +TransMap, +DeadStatesBefore, 
+%                   -DeadStatesAfter).
+% Finds all states that are "dead" meaning that there is no path
+% from them to the state that is present in the FinalSet.
+% Adds them to the DeadStatesBefore, creating DeadStatesAfter.
 findAllDeadStates([], _, _, D, D).
 findAllDeadStates([entry(CurrState, _) | States], F, T, D0, D) :-
-    % write("Checking node "), write(CurrState), write(" currently "), debug(D0),
-    % write(" remaining"), write(States), write("\n"),
-    \+ existsBST(D0, CurrState),
-    !, % if then else
-    findAllDeadStatesHelp([CurrState | States], F, T, D0, D).
-findAllDeadStates([_ | States], F, T, D0, D) :-
-    findAllDeadStates(States, F, T, D0, D).
+    ( existsBST(D0, CurrState) ->
+        % If state is already marked as dead, there is no need to visit it.
+        findAllDeadStates(States, F, T, D0, D);
+        findAllDeadStatesHelp(CurrState, F, T, D0, D1),
+        findAllDeadStates(States, F, T, D1, D)
+    ). 
 
-findAllDeadStatesHelp([CurrState | States], F, T, D0, D) :-
+% findAllDeadStatesHelp(+State, +FinalSet, +TransMap, 
+% +DeadStatesBefore, -DeadStatesAfter).
+% Tries to do dead state traversal (see visitDeadStates documentation)
+% starting at the +State.
+% If +State is in fact a dead state, DeadStatesAfter
+% contain all states visited during the traversal.
+% If not, DeadStatesAfter = DeadStatesBefore.
+findAllDeadStatesHelp(CurrState, F, T, D0, D) :-
     insertBST(D0, CurrState, D1),
-    visitDeadStates([CurrState], F, T, D1, D2),
-    !, % zamiast odciecia lepiej użyć if then else.
-    findAllDeadStates(States, F, T, D2, D).
-findAllDeadStatesHelp([_ | States], F, T, D0, D) :-
-    % \+ visitDeadStates([CurrState], F, T, D0, _),
-    findAllDeadStates(States, F, T, D0, D).
+    visitDeadStates([CurrState], F, T, D1, D),
+    !.
+findAllDeadStatesHelp(CurrState, F, T, D0, D0) :-
+    \+ visitDeadStates([CurrState], F, T, D0, _).
 
+% visitDeadStates(+Stack, +FinalSet, +TransMap, +DeadStatesBefore, 
+%                 -DeadStatesAfter)
+% Succeeds if there is full dfs traversal from the 
+% state at the top of the stack that satisfies following rules:
+% 1. We do not visit states that are in bst +DeadStatesBefore.
+% 2. There is no path from visited nodes to any state that is present
+% in +FinalSet.
+% If there is such traversal, all visited nodes are added to
+% +DeadStatesBefore, creating DeadStatesAfter.
 visitDeadStates([], _, _, D, D).
 visitDeadStates([CurrState | Stack], F, T, D0, D) :-
-    % write(CurrState), write(Stack), write(" "), write(D0), write("\n"),
+    % Continue traversal. 
+    % Make sure no state at the stack is among the final states.
     \+ existsBST(F, CurrState),
     getMap(T, CurrState, TransList),
+    % Add all states reachable from 
+    % CurrState. Mark the added nodes as dead.
     addNextStates(TransList, Stack, StackAfter, D0, D2),
-    % write(CurrState), write(": sucessfully added states "), write(Stack), write("\n"),
     visitDeadStates(StackAfter, F, T, D2, D).
 
 cycleAut(aut(_, _, T, I, _, _, _)) :- cycle(I, T).
@@ -242,7 +267,9 @@ cycleAut(aut(_, _, T, I, _, _, _)) :- cycle(I, T).
 cycle(I, T) :-
     cycle(I, puste, T). 
 
-% Tutaj można bardziej optymalnie (sprawdzać cykl przy dodaniu krawędzi).
+% cycle(+CurrentState, +VisitedNodes +TransList).
+% Predicate meaning that there is a path from CurrentState that
+% reaches a node in VisitedNodes.
 cycle(CurrState, V, _) :-
     existsBST(V, CurrState),
     !.
@@ -251,15 +278,9 @@ cycle(CurrState, V, T) :-
     getMap(T, CurrState, TransList),
     member(trans(_, NextState), TransList),
     cycle(NextState, V1, T),
-    !. % Jeżeli znajdziemy cykl po wybraniu stanu nie chcemy by próbowało wybierać dalej.
-
-addNoVisitedCheck([], S, S).
-addNoVisitedCheck([trans(_, NextState) | TL], S0, S) :-
-    addNoVisitedCheck(TL, [NextState | S0], S).    
+    !. % TODO Jeżeli znajdziemy cykl po wybraniu stanu nie chcemy by próbowało wybierać dalej.
 
 empty(A) :- correct(A, aut(_, _, T, I, F, _, _)),
-% debug("-----------"),
-% debug(T),
     \+ emptyDFSstack([I], T, F, wezel(puste, I, puste)).
 
 emptyDFSstack([CurrState | _], _, F, _) :-
@@ -309,10 +330,10 @@ addAllProductTrans([prod(S1, S2) | SPROD], A, D1, D2, D0, DPROD) :-
    getMap(D1, S1, T1),
    getMap(D2, S2, T2),
    prodStateTrans(A, T1, T2, TPROD),
-   % debug(TPROD),
    setMap(prod(S1, S2), TPROD, D0, DPROD1),
    addAllProductTrans(SPROD, A, D1, D2, DPROD1, DPROD).
 
+% keysListFromMap(+TreeMap, -KeyList)
 keysListFromMap(T, KL) :-
     bstToList(T, TL),
     keysListFromEntriesList(TL, KL).
