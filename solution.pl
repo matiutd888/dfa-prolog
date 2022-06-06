@@ -129,7 +129,7 @@ insertAllTransitions([fp(State, X, DestState) | TransLeft], D, Map0, Map) :-
         insertAllTransitions(TransLeft, D, Map0, Map)
     ).
 
-% existsMap(+state, +transMap):
+% existsMap(+state, +transMap)
 existsMap(Map, State) :-
     getMap(Map, State,  _).
 
@@ -150,6 +150,7 @@ correct(dfa(TransList, Init, FinalList),
         FinalSet, 
         NRealStates, 
         Infinity)) :- 
+    % Check if term is grounded.
     ground(dfs(TransList, Init, FinalList)),
     alphabet(TransList, Alphabet, LA),
     % Alphabet cannot be empty.
