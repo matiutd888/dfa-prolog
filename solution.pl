@@ -6,36 +6,6 @@
 bet(N, M, K) :- N =< M, K = N.
 bet(N, M, K) :- N < M, N1 is N + 1, bet(N1, M, K).
 
-dlugosc(A, X) :- lengthHelp(A, 0, X).
-lengthHelp([], X, X).
-lengthHelp([_ | L], Y, X) :- 
-    Y2 is Y + 1,
-    lengthHelp(L, Y2, X). 
-
-% Implementacja kolejki za pomocą listy różnicowej.
-initQ(L-L).
-
-closeQ(_-X) :- X = [].
-
-emptyQ(L-L) :- var(L).
-
-pushQ(X, L-L, K) :-
-  var(L),
-  !,
-  K = [X | R]-R.
-pushQ(X, L-R, L-K) :-
-  nonvar(L),
-  var(R),
-  R = [X | K].
-
-popQ([A | R]-X, R-X, A) :- var(X).
-
-listOfLength(0, []).
-listOfLength(X, [_ | L]) :-
-    X > 0,
-    X2 is X - 1,
-    listOfLength(X2, L).
-
 % alphabet(+Transitions, ?Alphabet, ?SizeOfAlphabet)
 alphabet(T, A, N) :- alphabet(T, puste, A, 0, N).
 alphabet([], A, A, N, N).
@@ -68,15 +38,6 @@ createTransMap([fp(State, _, _) | L], D,  S0, S, N0, N) :-
     insertBST(S0, entry(State, []), S1),
     createTransMap(L, D, S1, S, N1, N).
 
-% notTransition(+transitions, +alphabet, +states)
-% notTransition(T, A, S) :- member(A1, A), 
-%    member(S1, S),
-%    \+ member(fp(S1, A1, _), T).
-
-odwroc(L, R) :- odwroc(L, [], R).
-odwroc([], R, R).
-odwroc([X | L], Z, R) :- odwroc(L, [X | Z], R).
-
 
 % checkDestinations(+tranzycje, +stany) - sprawdza, czy 
 % cele tranzycji są w stanach.
@@ -84,23 +45,6 @@ checkDestinations([], _).
 checkDestinations([fp(_, _, X) | L], D) :- 
     existsMap(D, X),
     checkDestinations(L, D).
-
-% checkTransitionDuplicates(+list tranzycji)
-% checkTransitionDuplicates(T) :- checkTransitionDuplicates(T, []).
-% checkTransitionDuplicates([], _).
-% checkTransitionDuplicates([fp(S, A, X) | L], AK) :-
-%     \+ member(fp(S, A, _), AK),
-%     checkTransitionDuplicates(L, [fp(S, A, X) | AK]).
-
-% Nie usuwać, może się kiedyś przydać.
-% insertIntoTransBSTMap(fp(ST, X, Y), wezel(L, entry(ST, TS), R), wezel(L, entry(ST, [trans(X, Y) | TS]), R)) :-
-%     \+ member(trans(X, Y), TS).
-% insertIntoTransBSTMap(fp(ST, X, Y), wezel(L, entry(NextState, T), R), wezel(L2, entry(NST, T), R)) :-
-%     ST @< NextState,
-%     insertIntoTransBSTMap(fp(ST, X, Y), L, L2).
-% insertIntoTransBSTMap(fp(ST, X, Y), wezel(L, entry(NextState, T), R), wezel(L, entry(NST, T), R2)) :-
-%     ST @> NextState,
-%     insertIntoTransBSTMap(fp(ST, X, Y), R, R2).
 
 insertBST(puste, X, wezel(puste, X, puste)).
 insertBST(wezel(L, W, P), X, wezel(L1, W, P)) :-
@@ -210,27 +154,6 @@ debug(X) :-
 
 %debug(_).
 
-% removeAllDeadTrans(+TransMap, +DeadStates, ?TransMapAfter)
-% removeAllDeadTrans(puste, _, puste).
-% removeAllDeadTrans(wezel(L0, entry(S, _), R0), D, wezel(L, entry(S, []), R)) :-
-%     existsBST(D, S),
-%     !,
-%     removeAllDeadTrans(L0, D, L),
-%     removeAllDeadTrans(R0, D, R).
-% removeAllDeadTrans(wezel(L0, entry(S, T0), R0), D, wezel(L, entry(S, T), R)) :-
-%     removeDeadTrans(T0, D, T),
-%     removeAllDeadTrans(L0, D, L),
-%     removeAllDeadTrans(R0, D, R).
-
-% removeDeadTrans(+TransList, DeadStates, ?TransListAfter) :-
-% removeDeadTrans([], _, []).
-% removeDeadTrans([trans(_, DeadState) | T0], D, T) :-
-%     existsBST(D, DeadState),
-%     !, % if then else
-%     removeDeadTrans(T0, D, T).
-% removeDeadTrans([trans(A, State) | T0], D, [trans(A, State) | T]) :-
-%     removeDeadTrans(T0, D, T).
-
 % TODO czy musimy sprawdzać, że nie ma duplikatów w F.
 correct(dfa(TransList, Init, FinalList), aut(Alphabet, TransMapOriginal, TransMap, Init, FinalSet, NRealStates, Infinity)) :- 
     alphabet(TransList, Alphabet, LA),
@@ -255,7 +178,6 @@ correct(dfa(TransList, Init, FinalList), aut(Alphabet, TransMapOriginal, TransMa
     % Create TransMap without DeadStates.
     createTransMap(TransList, DeadStates, TransMap2, NRealStates),
     
-
     % Insert transitions to normal states.
     insertAllTransitions(TransList, DeadStates, TransMap2, TransMap),
     
@@ -263,7 +185,6 @@ correct(dfa(TransList, Init, FinalList), aut(Alphabet, TransMapOriginal, TransMa
 
 infinityCheck(I, T, inf) :- cycle(I, T), !.
 infinityCheck(I, T, notInf) :- \+ cycle(I, T). 
-
 
 infinityCheck(A, inf) :- cycleAut(A), !.
 infinityCheck(A, notInf) :- \+ cycleAut(A). 
@@ -465,96 +386,96 @@ equal(A1, A2) :-
 % b, a
 % b, b
 % b, b, a
-my_example(k1, dfa([fp(1,a,3), fp(1, b, 2), fp(2, b, 3), fp(2, a, 4), fp(3, a, 4), fp(3, b, 5), fp(4, a, 5), fp(4, b, 5), fp(5, a, 5), fp(5, b, 5)], 1, [2,3,4])).
-my_example(k2, dfa([fp(1,a,3), fp(1, b, 2), fp(2, b, 3), fp(2, a, 4), fp(3, a, 4), fp(3, b, 5), fp(4, a, 5), fp(4, b, 5), fp(5, a, 6), fp(5, b, 6), fp(6, a, 7), fp(6, b, 7), fp(7, a, 5), fp(7, b, 5)], 1, [2,3,4])).
-
-
-my_example(a11, dfa([fp(1,a,1),fp(1,b,2),fp(2,a,2),fp(2,b,1)], 1, [2,1])).
-my_example(a12, dfa([fp(x,a,y),fp(x,b,x),fp(y,a,x),fp(y,b,x)], x, [x,y])).
-my_example(a2, dfa([fp(1,a,2),fp(2,b,1),fp(1,b,3),fp(2,a,3),
-fp(3,b,3),fp(3,a,3)], 1, [1])).
-my_example(a3, dfa([fp(0,a,1),fp(1,a,0)], 0, [0])).
-my_example(a4, dfa([fp(x,a,y),fp(y,a,z),fp(z,a,x)], x, [x])).
-my_example(a5, dfa([fp(x,a,y),fp(y,a,z),fp(z,a,zz),fp(zz,a,x)], x, [x])).
-my_example(a6, dfa([fp(1,a,1),fp(1,b,2),fp(2,a,2),fp(2,b,1)], 1, [])).
-my_example(a7, dfa([fp(1,a,1),fp(1,b,2),fp(2,a,2),fp(2,b,1),
-fp(3,b,3),fp(3,a,3)], 1, [3])).
-% bad ones
-my_example(b1, dfa([fp(1,a,1),fp(1,a,1)], 1, [])).
-my_example(b2, dfa([fp(1,a,1),fp(1,a,2)], 1, [])).
-my_example(b3, dfa([fp(1,a,2)], 1, [])).
-my_example(b4, dfa([fp(1,a,1)], 2, [])).
-my_example(b4, dfa([fp(1,a,1)], 1, [1,2])).
-my_example(b5, dfa([], [], [])).
-
-mTCorrect(X, Z) :- my_example(X, Y), correct(Y, Z).
-mTBadCorrect() :- 
-    member(X, [b1, b2, b3, b4, b5]),
-    mTCorrect(X, _),
-    debug(X).
-mTGoodCorrect() :-
-    member(X, [a11, a12, a2, a3, a4, a5, a6, a7]),
-    \+ mTCorrect(X, _),
-    debug(X).
-mTAllCorrect() :- \+ mTBadCorrect(),
-    \+ mTGoodCorrect().
-
-mTNotEmpty1() :-
-    member(X, [b1, b2, b3, b4, b5, a11, a12, a2, a3, a4, a5]),
-    my_example(X, XAUT),
-    empty(XAUT),
-    debug(X).
-
-mTNotEmpty2() :-
-    member(Y, [a6, a7]),
-    my_example(Y, YAUT),
-    \+ empty(YAUT).
-
-mTEmpty() :-
-    \+ mTNotEmpty1(),
-    \+ mTNotEmpty2().
-
-mTAccept(X, Z) :- 
-    my_example(X, Y), 
-    accept(Y, Z).
-
-mTAllInfinite() :-
-    \+ mTPositiveInfinite(),
-    \+ mTNegativeInfinite().
-mTPositiveInfinite() :-
-   member(X, [a11, a12, a2, a3, a4, a5]),
-   \+ mTInfinite(X),
-   debug(X).
-mTNegativeInfinite() :-
-    member(X, [k1, k2]),
-    mTInfinite(X),
-    debug(X).
-mTInfinite(X) :-
-    my_example(X, Y),
-    correct(Y, R),
-    cycleAut(R).
-
-mTSubset(X, Y) :-
-    my_example(X, XR),
-    my_example(Y, YR),
-    debug(XR),
-    debug(YR),
-    subsetEq(XR, YR).
-mTPositiveSubset() :-
-    member((X, Y), [(a5, a3)]),
-    \+ mTSubset(X, Y),
-    debug((X, Y)).
-mTTrivialPositiveSubset() :-
-    member(X, [a11, a12, a2, a6, a7]),
-    member(Y, [a11, a12]),
-    \+ mTSubset(X, Y),
-    debug((X, Y)).
-mTNegativeSubset() :-
-    member((X, Y), [(a4, a3), (a3, a5), (a4, a5), (a3, a4)]),
-    mTSubset(X, Y),
-    debug((X, Y)).
-mTAllSubset() :-
-    \+ mTPositiveSubset(),
-    \+ mTTrivialPositiveSubset(),
-    \+ mTNegativeSubset().
-
+% my_example(k1, dfa([fp(1,a,3), fp(1, b, 2), fp(2, b, 3), fp(2, a, 4), fp(3, a, 4), fp(3, b, 5), fp(4, a, 5), fp(4, b, 5), fp(5, a, 5), fp(5, b, 5)], 1, [2,3,4])).
+% my_example(k2, dfa([fp(1,a,3), fp(1, b, 2), fp(2, b, 3), fp(2, a, 4), fp(3, a, 4), fp(3, b, 5), fp(4, a, 5), fp(4, b, 5), fp(5, a, 6), fp(5, b, 6), fp(6, a, 7), fp(6, b, 7), fp(7, a, 5), fp(7, b, 5)], 1, [2,3,4])).
+% 
+% 
+% my_example(a11, dfa([fp(1,a,1),fp(1,b,2),fp(2,a,2),fp(2,b,1)], 1, [2,1])).
+% my_example(a12, dfa([fp(x,a,y),fp(x,b,x),fp(y,a,x),fp(y,b,x)], x, [x,y])).
+% my_example(a2, dfa([fp(1,a,2),fp(2,b,1),fp(1,b,3),fp(2,a,3),
+% fp(3,b,3),fp(3,a,3)], 1, [1])).
+% my_example(a3, dfa([fp(0,a,1),fp(1,a,0)], 0, [0])).
+% my_example(a4, dfa([fp(x,a,y),fp(y,a,z),fp(z,a,x)], x, [x])).
+% my_example(a5, dfa([fp(x,a,y),fp(y,a,z),fp(z,a,zz),fp(zz,a,x)], x, [x])).
+% my_example(a6, dfa([fp(1,a,1),fp(1,b,2),fp(2,a,2),fp(2,b,1)], 1, [])).
+% my_example(a7, dfa([fp(1,a,1),fp(1,b,2),fp(2,a,2),fp(2,b,1),
+% fp(3,b,3),fp(3,a,3)], 1, [3])).
+% % bad ones
+% my_example(b1, dfa([fp(1,a,1),fp(1,a,1)], 1, [])).
+% my_example(b2, dfa([fp(1,a,1),fp(1,a,2)], 1, [])).
+% my_example(b3, dfa([fp(1,a,2)], 1, [])).
+% my_example(b4, dfa([fp(1,a,1)], 2, [])).
+% my_example(b4, dfa([fp(1,a,1)], 1, [1,2])).
+% my_example(b5, dfa([], [], [])).
+% 
+% mTCorrect(X, Z) :- my_example(X, Y), correct(Y, Z).
+% mTBadCorrect() :- 
+%     member(X, [b1, b2, b3, b4, b5]),
+%     mTCorrect(X, _),
+%     debug(X).
+% mTGoodCorrect() :-
+%     member(X, [a11, a12, a2, a3, a4, a5, a6, a7]),
+%     \+ mTCorrect(X, _),
+%     debug(X).
+% mTAllCorrect() :- \+ mTBadCorrect(),
+%     \+ mTGoodCorrect().
+% 
+% mTNotEmpty1() :-
+%     member(X, [b1, b2, b3, b4, b5, a11, a12, a2, a3, a4, a5]),
+%     my_example(X, XAUT),
+%     empty(XAUT),
+%     debug(X).
+% 
+% mTNotEmpty2() :-
+%     member(Y, [a6, a7]),
+%     my_example(Y, YAUT),
+%     \+ empty(YAUT).
+% 
+% mTEmpty() :-
+%     \+ mTNotEmpty1(),
+%     \+ mTNotEmpty2().
+% 
+% mTAccept(X, Z) :- 
+%     my_example(X, Y), 
+%     accept(Y, Z).
+% 
+% mTAllInfinite() :-
+%     \+ mTPositiveInfinite(),
+%     \+ mTNegativeInfinite().
+% mTPositiveInfinite() :-
+%    member(X, [a11, a12, a2, a3, a4, a5]),
+%    \+ mTInfinite(X),
+%    debug(X).
+% mTNegativeInfinite() :-
+%     member(X, [k1, k2]),
+%     mTInfinite(X),
+%     debug(X).
+% mTInfinite(X) :-
+%     my_example(X, Y),
+%     correct(Y, R),
+%     cycleAut(R).
+% 
+% mTSubset(X, Y) :-
+%     my_example(X, XR),
+%     my_example(Y, YR),
+%     debug(XR),
+%     debug(YR),
+%     subsetEq(XR, YR).
+% mTPositiveSubset() :-
+%     member((X, Y), [(a5, a3)]),
+%     \+ mTSubset(X, Y),
+%     debug((X, Y)).
+% mTTrivialPositiveSubset() :-
+%     member(X, [a11, a12, a2, a6, a7]),
+%     member(Y, [a11, a12]),
+%     \+ mTSubset(X, Y),
+%     debug((X, Y)).
+% mTNegativeSubset() :-
+%     member((X, Y), [(a4, a3), (a3, a5), (a4, a5), (a3, a4)]),
+%     mTSubset(X, Y),
+%     debug((X, Y)).
+% mTAllSubset() :-
+%     \+ mTPositiveSubset(),
+%     \+ mTTrivialPositiveSubset(),
+%     \+ mTNegativeSubset().
+% 
