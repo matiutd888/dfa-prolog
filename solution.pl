@@ -334,6 +334,14 @@ keysListFromEntriesList([], []).
 keysListFromEntriesList([entry(K, _) | EL], [K | KL]) :-
     keysListFromEntriesList(EL, KL).
 
+% capEmpty(+A, +(T1, I1, F1), +(T2, I2, F2))
+% Checks whether the product of automatas 
+% under alphabet A,
+% represented by
+% 1. TransList (T1, T2)
+% 2. Initial states (I1, I2)
+% 3. Final states (F1, F2)
+% is empty.
 capEmpty(A, (T1, I1, F1), (T2, I2, F2)) :-
     bstToList(A, AL),
     keysListFromMap(T1, S1),
@@ -345,7 +353,10 @@ capEmpty(A, (T1, I1, F1), (T2, I2, F2)) :-
     createBSTMap(SPROD,  [], TPROD0),
     addAllProductTrans(SPROD, AL, T1, T2, TPROD0, TPROD),
     listToBST(FLPROD, FPROD),
-    \+ emptyDFSstack([prod(I1, I2)], TPROD, FPROD, wezel(puste, prod(I1, I2), puste)). 
+    \+ emptyDFSstack([prod(I1, I2)], 
+                     TPROD, 
+                     FPROD, 
+                     wezel(puste, prod(I1, I2), puste)). 
 
 % complement(+L, +F, -FComplement)
 % Creates set of elements from L that are not present in F.
@@ -369,7 +380,6 @@ subsetEq(A1, A2) :-
 subsetEq(A, (TO1, I1, F1), (TO2, I2, F2)) :-
     keysListFromMap(TO2, S2),
     complement(S2, F2, FC2),
-    % debug(("FC2 = ", FC2)), 
     capEmpty(A, (TO1, I1, F1), (TO2, I2, FC2)).    
 
 equal(A1, A2) :-
