@@ -10,33 +10,29 @@ bet(N, M, K) :- N < M, N1 is N + 1, bet(N1, M, K).
 alphabet(T, A, N) :- alphabet(T, puste, A, 0, N).
 alphabet([], A, A, N, N).
 alphabet([fp(_, C, _) | L], A0, A, N0, N) :- 
-    \+ existsBST(A0, C), 
-    !,
-    insertBST(A0, C, A1),
-    N1 is N0 + 1, 
-    alphabet(L, A1, A, N1, N).
-alphabet([fp(_, C, _) | L], A0, A, N0, N) :- 
-    existsBST(A0, C), 
-    alphabet(L, A0, A, N0, N).
+    (
+        existsBST(A0, C) ->
+
+        alphabet(L, A0, A, N0, N);
+
+        insertBST(A0, C, A1),
+        N1 is N0 + 1, 
+        alphabet(L, A1, A, N1, N)
+    ). 
 
 % createTransMap(+TransitionList, +DeadStates, -TransitionsMap, -SizeOfMap)
 createTransMap(T, D, S, N) :- createTransMap(T, D, puste, S, 0, N).
 createTransMap([], _, S, S, N, N).
-createTransMap([fp(State, _, _) | L], D, S0, S, N0, N) :- 
-    existsMap(S0, State),
-    !,
-    createTransMap(L, D, S0, S, N0, N).
-createTransMap([fp(State, _, _) | L], D, S0, S, N0, N) :- 
-    existsBST(D, State),
-    !,
-    createTransMap(L, D, S0, S, N0, N).
 createTransMap([fp(State, _, _) | L], D,  S0, S, N0, N) :- 
-    \+ existsMap(S0, State),
-    \+ existsBST(D, State),
-    N1 is N0 + 1,
-    !, 
-    insertBST(S0, entry(State, []), S1),
-    createTransMap(L, D, S1, S, N1, N).
+    (   
+        \+ existsMap(S0, State), \+ existsBST(D, State) ->
+        
+        N1 is N0 + 1, 
+        insertBST(S0, entry(State, []), S1),
+        createTransMap(L, D, S1, S, N1, N);
+
+        createTransMap(L, D, S0, S, N0, N)
+   ). 
 
 
 % destinationsCorrect(+Transitions, +TransitionMap)
@@ -86,13 +82,15 @@ createBSTMap([ST | States], InitVal, Acc1, Map) :-
 
 % existsBST(+BST, +Value).
 existsBST(wezel(_, V, _), V) :- !.
-existsBST(wezel(L, V1, _), V) :-
-    V @< V1,
-    !,
-    existsBST(L, V).
-existsBST(wezel(_, V1, R), V) :-
-    V @> V1,
-    existsBST(R, V).
+existsBST(wezel(L, V1, R), V) :-
+    (
+        V @< V1 ->
+        
+        existsBST(L, V);
+        
+        existsBST(R, V)
+
+    ).
 
 % bstToList(+Tree, -List)
 bstToList(T, L) :- bstToList(T, [], L).
@@ -117,20 +115,17 @@ listToBST([X | L], T0, T) :-
 % While doing that, checks whether TransitionList contains duplicates.
 insertAllTransitions([], _, Map, Map). 
 insertAllTransitions([fp(State, X, DestState) | TransLeft], D, Map0, Map) :-
-    \+ existsBST(D, DestState),
-    \+ existsBST(D, State),
-    !, 
-    getMap(Map0, State, StateTransitions),
-    \+ member(trans(X, _), StateTransitions),
-    setMap(State, [trans(X, DestState) | StateTransitions], Map0, Map1),
-    insertAllTransitions(TransLeft, D, Map1, Map).
-insertAllTransitions([fp(_, _, DestState) | TransLeft], D, Map0, Map) :-
-    existsBST(D, DestState),
-    !,
-    insertAllTransitions(TransLeft, D, Map0, Map).
-insertAllTransitions([fp(State, _, _) | TransLeft], D, Map0, Map) :-
-    existsBST(D, State),
-    insertAllTransitions(TransLeft, D, Map0, Map).
+    (
+        \+ existsBST(D, DestState), \+ existsBST(D, State) ->
+        
+        getMap(Map0, State, StateTransitions),
+        \+ member(trans(X, _), StateTransitions),
+        setMap(State, [trans(X, DestState) | StateTransitions], Map0, Map1),
+        insertAllTransitions(TransLeft, D, Map1, Map);
+        
+        insertAllTransitions(TransLeft, D, Map0, Map)
+                
+    ).
 
 % existsMap(+state, +transMap):
 existsMap(Map, State) :-
@@ -206,8 +201,7 @@ acceptAut(aut(_, _, T, I, F, N, notInf), X) :-
     traverseDFS(X, T, F, I).
 
 traverseDFS([], _, F, S) :-
-    existsBST(F, S),
-    !.
+    existsBST(F, S).
 traverseDFS([C | Rest], T, F, CurrState):-
     getMap(T, CurrState, TransList),
     member(trans(C, NextState), TransList),
@@ -221,7 +215,8 @@ traverseDFS([C | Rest], T, F, CurrState):-
 % Adds them to the DeadStatesBefore, creating DeadStatesAfter.
 findAllDeadStates([], _, _, D, D).
 findAllDeadStates([entry(CurrState, _) | States], F, T, D0, D) :-
-    ( existsBST(D0, CurrState) ->
+    ( 
+        existsBST(D0, CurrState) ->
         % If state is already marked as dead, there is no need to visit it.
         findAllDeadStates(States, F, T, D0, D);
         findAllDeadStatesHelp(CurrState, F, T, D0, D1),
@@ -240,7 +235,8 @@ findAllDeadStatesHelp(CurrState, F, T, D0, D) :-
     visitDeadStates([CurrState], F, T, D1, D),
     !.
 findAllDeadStatesHelp(CurrState, F, T, D0, D0) :-
-    \+ visitDeadStates([CurrState], F, T, D0, _).
+    insertBST(D0, CurrState, D1),
+    \+ visitDeadStates([CurrState], F, T, D1, _).
 
 % visitDeadStates(+Stack, +FinalSet, +TransMap, +DeadStatesBefore, 
 %                 -DeadStatesAfter)
@@ -287,25 +283,19 @@ emptyDFSstack([CurrState | _], _, F, _) :-
     existsBST(F, CurrState).
 
 emptyDFSstack([CurrState | Stack0], T, F, V0) :-
-    % debug(("CurrState", CurrState, "Stack0 ", Stack0)),
     getMap(T, CurrState, TransList),
-    % debug(("TransList", TransList)),     
     addNextStates(TransList, Stack0, Stack1, V0, V1),
-    % debug(("Stack1", Stack1)),
     emptyDFSstack(Stack1, T, F, V1).
 
 % addNextStates(+TranList, +StackBefore, ?StackAfter, +VisitedBefore, ?VisitedAfter)
 addNextStates([], S, S, V, V).
 addNextStates([trans(_, NextState) | TL], S0, S, V0, V) :-
-    % debug(("V0", V0, "NextState", NextState)),
-    \+ existsBST(V0, NextState),
-    !, % if then else
-    insertBST(V0, NextState, V1),
-    % debug(("V1", V1)),
-    addNextStates(TL, [NextState | S0], S, V1, V).    
-addNextStates([trans(_, NextState) | TL], S0, S, V0, V) :-
-    existsBST(V0, NextState),
-    addNextStates(TL, S0, S, V0, V).    
+    ( 
+        existsBST(V0, NextState) -> 
+        addNextStates(TL, S0, S, V0, V);
+        insertBST(V0, NextState, V1),
+        addNextStates(TL, [NextState | S0], S, V1, V)
+    ).
 
 % cartProduct(+X, +Y, ?L).
 cartProduct(X, Y, L) :- cartProductHelp(X, Y, L-[]).
@@ -322,7 +312,8 @@ prodStateTrans([], _, _, []).
 prodStateTrans([X | A], T1, T2, [trans(X, prod(Y1, Y2)) | TPROD]) :-
     member(trans(X, Y1), T1),
     member(trans(X, Y2), T2),
-    !,
+    !, % Cut because there can be only one 
+       % members of T1 and T2 with X as first tuple element.
     prodStateTrans(A, T1, T2, TPROD).
 
 addAllProductTrans([], _, _, _, D, D).
@@ -350,15 +341,10 @@ capEmpty(A, (T1, I1, F1), (T2, I2, F2)) :-
     bstToList(F1, FL1),
     bstToList(F2, FL2),
     cartProduct(S1, S2, SPROD),
-    % debug(("SPROD", SPROD)),
     cartProduct(FL1, FL2, FLPROD),
-    % debug(("FLPROD", FLPROD)),
     createBSTMap(SPROD,  [], TPROD0),
-    % debug(("TPROD0", TPROD0)), 
     addAllProductTrans(SPROD, AL, T1, T2, TPROD0, TPROD),
     listToBST(FLPROD, FPROD),
-    % debug(("FPROD", FPROD)),
-    % debug(("TPROD ", TPROD)),
     \+ emptyDFSstack([prod(I1, I2)], TPROD, FPROD, wezel(puste, prod(I1, I2), puste)). 
 
 % complement(+L, +F, -FComplement)
@@ -366,13 +352,12 @@ capEmpty(A, (T1, I1, F1), (T2, I2, F2)) :-
 complement(L, F, FC) :- complement(L, F, puste, FC).
 complement([], _, FC, FC).
 complement([X | L], F, FC0, FC) :-
-    \+ existsBST(F, X),
-    !,
-    insertBST(FC0, X, FC1),
-    complement(L, F, FC1, FC).
-complement([X | L], F, FC0, FC) :-
-    existsBST(F, X), % TODO To potrzebne by odciecie było zielone. Nie wiem czy to używać.
-    complement(L, F, FC0, FC).
+    ( 
+        existsBST(F, X) ->
+        complement(L, F, FC0, FC);
+        insertBST(FC0, X, FC1),
+        complement(L, F, FC1, FC)
+    ).
 
 subsetEq(A1, A2) :-
     correct(A1, aut(Alph1, TO1, _, I1, F1, _, _)),
