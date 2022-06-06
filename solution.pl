@@ -1,9 +1,13 @@
 % https://stackoverflow.com/questions/18337235/can-you-write-between-3-in-pure-prolog
-bet(N, M, K) :- N =< M, K = N.
-bet(N, M, K) :- N < M, N1 is N + 1, bet(N1, M, K).
+bet(N, M, K) :- 
+    N =< M, K = N.
+bet(N, M, K) :- 
+    N < M, N1 is N + 1, 
+    bet(N1, M, K).
 
 % alphabet(+Transitions, ?Alphabet, ?SizeOfAlphabet)
-alphabet(T, A, N) :- alphabet(T, puste, A, 0, N).
+alphabet(T, A, N) :- 
+    alphabet(T, puste, A, 0, N).
 alphabet([], A, A, N, N).
 alphabet([fp(_, C, _) | L], A0, A, N0, N) :- 
     (
@@ -17,7 +21,8 @@ alphabet([fp(_, C, _) | L], A0, A, N0, N) :-
     ). 
 
 % createTransMap(+TransitionList, +DeadStates, -TransitionsMap, -SizeOfMap)
-createTransMap(T, D, S, N) :- createTransMap(T, D, puste, S, 0, N).
+createTransMap(T, D, S, N) :- 
+    createTransMap(T, D, puste, S, 0, N).
 createTransMap([], _, S, S, N, N).
 createTransMap([fp(State, _, _) | L], D,  S0, S, N0, N) :- 
     (   
@@ -58,7 +63,8 @@ getMap(wezel(_, entry(K2, _), R), K, V) :-
     getMap(R, K, V).
 
 % setMap(+Key, +Value, +Map, -NewMap)
-setMap(K, V, wezel(L, entry(K, _), R), wezel(L, entry(K, V), R)) :- !. 
+setMap(K, V, wezel(L, entry(K, _), R), wezel(L, entry(K, V), R)) :- 
+    !. 
 setMap(K, V, wezel(L, entry(K2, V2), R), wezel(L2, entry(K2, V2), R)) :-
     K @< K2,
     !,
@@ -76,7 +82,8 @@ createBSTMap([ST | States], InitVal, Acc1, Map) :-
     createBSTMap(States, InitVal, Acc2, Map).
 
 % existsBST(+BST, +Value).
-existsBST(wezel(_, V, _), V) :- !.
+existsBST(wezel(_, V, _), V) :- 
+    !.
 existsBST(wezel(L, V1, _), V) :-
     V @< V1,
     !,
@@ -94,9 +101,9 @@ existsBST(T, V, X) :-
         X = no
     ). 
 
-
 % bstToList(+Tree, -List)
-bstToList(T, L) :- bstToList(T, [], L).
+bstToList(T, L) :- 
+    bstToList(T, [], L).
 bstToList(puste, A, A).
 bstToList(wezel(L, W, R), A, K) :-
   bstToList(R, A, K1),
@@ -266,8 +273,10 @@ visitDeadStates([CurrState | Stack], F, T, D0, D) :-
     addNextStates(TransList, Stack, StackAfter, D0, D2),
     visitDeadStates(StackAfter, F, T, D2, D).
 
-cycleAut(aut(_, _, T, I, _, _, _)) :- cycle(I, T).
+cycleAut(aut(_, _, T, I, _, _, _)) :- 
+    cycle(I, T).
 
+% cycle(+InitialState, +TransitionMap)
 cycle(I, T) :-
     cycle(I, puste, T). 
 
@@ -285,7 +294,8 @@ cycle(no, CurrState, V, T) :-
     cycle(NextState, V1, T),
     !. % A cut to prevent searching for cycle if we already found one.
 
-empty(A) :- correct(A, aut(_, _, T, I, F, _, _)),
+empty(A) :- 
+    correct(A, aut(_, _, T, I, F, _, _)),
     \+ emptyDFSstack([I], T, F, wezel(puste, I, puste)).
 
 emptyDFSstack([CurrState | Stack0], T, F, V0) :-
